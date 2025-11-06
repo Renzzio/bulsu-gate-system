@@ -1,7 +1,43 @@
 // frontend/src/components/AdminDashboard.js
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import UserManagement from './admin/UserManagement';
+import DashboardStats from './admin/DashboardStats';
+import AccessLogs from './admin/AccessLogs';
+import ViolationReports from './admin/ViolationReports';
+import ScheduleManagement from './admin/ScheduleManagement';
+import ReportsModule from './admin/ReportsModule';
 
 function AdminDashboard({ user, onLogout }) {
+  const [activeTab, setActiveTab] = useState('dashboard');
+
+  const tabs = [
+    { id: 'dashboard', label: '📊 Dashboard', icon: '📊' },
+    { id: 'users', label: '👥 User Management', icon: '👥' },
+    { id: 'schedules', label: '📅 Schedules', icon: '📅' },
+    { id: 'logs', label: '📋 Access Logs', icon: '📋' },
+    { id: 'violations', label: '⚠️ Violations', icon: '⚠️' },
+    { id: 'reports', label: '📈 Reports', icon: '📈' }
+  ];
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'dashboard':
+        return <DashboardStats />;
+      case 'users':
+        return <UserManagement />;
+      case 'schedules':
+        return <ScheduleManagement />;
+      case 'logs':
+        return <AccessLogs />;
+      case 'violations':
+        return <ViolationReports />;
+      case 'reports':
+        return <ReportsModule />;
+      default:
+        return <DashboardStats />;
+    }
+  };
+
   return (
     <div className="dashboard-container">
       <header className="dashboard-header">
@@ -23,58 +59,26 @@ function AdminDashboard({ user, onLogout }) {
         </div>
       </header>
 
-      <main className="dashboard-content">
-        <div className="welcome-card">
-          <h2>Welcome, {user.firstName}!</h2>
-          <p>
-            You have full access to the Gate Restriction System. Manage users, 
-            monitor gate activities, and configure system settings.
-          </p>
-        </div>
+      <div className="admin-layout">
+        <aside className="admin-sidebar">
+          <nav className="sidebar-nav">
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                className={`nav-item ${activeTab === tab.id ? 'active' : ''}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <span className="nav-icon">{tab.icon}</span>
+                <span className="nav-label">{tab.label}</span>
+              </button>
+            ))}
+          </nav>
+        </aside>
 
-        <div className="dashboard-stats">
-          <div className="stat-card">
-            <h3>Total Students</h3>
-            <div className="stat-value">1,247</div>
-          </div>
-          <div className="stat-card">
-            <h3>Active Gates</h3>
-            <div className="stat-value">4</div>
-          </div>
-          <div className="stat-card">
-            <h3>Today's Entries</h3>
-            <div className="stat-value">823</div>
-          </div>
-          <div className="stat-card">
-            <h3>Violations</h3>
-            <div className="stat-value">12</div>
-          </div>
-        </div>
-
-        <div className="quick-actions">
-          <h3>Quick Actions</h3>
-          <div className="action-buttons">
-            <button className="action-button">
-              👥 Manage Users
-            </button>
-            <button className="action-button">
-              📅 Manage Schedules
-            </button>
-            <button className="action-button">
-              🚪 Gate Configuration
-            </button>
-            <button className="action-button">
-              📊 View Reports
-            </button>
-            <button className="action-button">
-              ⚠️ View Violations
-            </button>
-            <button className="action-button">
-              ⚙️ System Settings
-            </button>
-          </div>
-        </div>
-      </main>
+        <main className="admin-content">
+          {renderContent()}
+        </main>
+      </div>
     </div>
   );
 }

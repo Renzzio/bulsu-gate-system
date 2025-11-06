@@ -11,12 +11,12 @@ function AdminDashboard({ user, onLogout }) {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   const tabs = [
-    { id: 'dashboard', label: '📊 Dashboard', icon: '📊' },
-    { id: 'users', label: '👥 User Management', icon: '👥' },
-    { id: 'schedules', label: '📅 Schedules', icon: '📅' },
-    { id: 'logs', label: '📋 Access Logs', icon: '📋' },
-    { id: 'violations', label: '⚠️ Violations', icon: '⚠️' },
-    { id: 'reports', label: '📈 Reports', icon: '📈' }
+    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'users', label: 'User Management', icon: '👥' },
+    { id: 'schedules', label: 'Schedules', icon: '📅' },
+    { id: 'logs', label: 'Access Logs', icon: '📋' },
+    { id: 'violations', label: 'Violations', icon: '⚠️' },
+    { id: 'reports', label: 'Reports', icon: '📈' }
   ];
 
   const renderContent = () => {
@@ -42,10 +42,9 @@ function AdminDashboard({ user, onLogout }) {
     <div className="dashboard-container">
       <header className="dashboard-header">
         <div className="header-left">
-          <div className="logo">🎓 BulSU Gate System</div>
+          <div className="logo">BulSU Gate System</div>
           <div className="header-title">
-            <h1>Admin Dashboard</h1>
-            <p>System Administration Panel</p>
+ 
           </div>
         </div>
         <div className="header-right">

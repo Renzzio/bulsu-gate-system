@@ -123,28 +123,6 @@ function DashboardStats() {
           <div className="stat-footer">All time violations</div>
         </div>
       </div>
-
-      <div className="quick-actions-section">
-        <h3>Quick Actions</h3>
-        <div className="action-grid">
-          <button className="action-card">
-            <span className="action-icon">👥</span>
-            <span className="action-text">Add New User</span>
-          </button>
-          <button className="action-card">
-            <span className="action-icon">📅</span>
-            <span className="action-text">Upload Schedule</span>
-          </button>
-          <button className="action-card">
-            <span className="action-icon">📊</span>
-            <span className="action-text">Generate Report</span>
-          </button>
-          <button className="action-card">
-            <span className="action-icon">⚙️</span>
-            <span className="action-text">System Settings</span>
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

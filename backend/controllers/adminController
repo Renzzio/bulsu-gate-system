@@ -1,0 +1,715 @@
+// backend/controllers/adminController.js
+const { db } = require('../config/firebase');
+const { hashPassword } = require('../utils/passwordUtils');
+const QRCode = require('qrcode');
+
+// User Management Controllers
+
+// Get all users
+const getAllUsers = async (req, res) => {
+  try {
+    const { role, status } = req.query;
+
+    const usersRef = db.ref('users');
+    const snapshot = await usersRef.once('value');
+    
+    if (!snapshot.exists()) {
+      return res.json({
+        success: true,
+        users: []
+      });
+    }
+
+    let users = [];
+    snapshot.forEach(childSnapshot => {
+      const userData = childSnapshot.val();
+      const userId = childSnapshot.key;
+      
+      // Filter by role if specified
+      if (role && userData.role !== role) return;
+      
+      // Filter by status if specified
+      if (status && userData.status !== status) return;
+
+      // Generate QR code for each user
+      const qrData = JSON.stringify({
+        userId: userId,
+        username: userData.username,
+        role: userData.role
+      });
+
+      // Remove password from response
+      const { password, ...userWithoutPassword } = userData;
+      
+      users.push({
+        userId,
+        ...userWithoutPassword
+      });
+    });
+
+    // Generate QR codes for all users
+    const usersWithQR = await Promise.all(users.map(async (user) => {
+      try {
+        const qrData = JSON.stringify({
+          userId: user.userId,
+          username: user.username,
+          role: user.role
+        });
+        const qrCode = await QRCode.toDataURL(qrData);
+        return { ...user, qrCode };
+      } catch (error) {
+        console.error('QR generation error for user:', user.userId, error);
+        return { ...user, qrCode: null };
+      }
+    }));
+
+    res.json({
+      success: true,
+      users: usersWithQR
+    });
+
+  } catch (error) {
+    console.error('Get all users error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching users'
+    });
+  }
+};
+
+// Get user by ID
+const getUserById = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const userSnapshot = await db.ref(`users/${userId}`).once('value');
+    
+    if (!userSnapshot.exists()) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const userData = userSnapshot.val();
+    const { password, ...userWithoutPassword } = userData;
+
+    // Generate QR code
+    const qrData = JSON.stringify({
+      userId,
+      username: userData.username,
+      role: userData.role
+    });
+    const qrCode = await QRCode.toDataURL(qrData);
+
+    res.json({
+      success: true,
+      user: {
+        userId,
+        ...userWithoutPassword,
+        qrCode
+      }
+    });
+
+  } catch (error) {
+    console.error('Get user by ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching user'
+    });
+  }
+};
+
+// Create new user
+const createUser = async (req, res) => {
+  try {
+    const userData = req.body;
+
+    // Validate required fields
+    if (!userData.username || !userData.password || !userData.email || !userData.role) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields'
+      });
+    }
+
+    // Check if username already exists
+    const usersRef = db.ref('users');
+    const snapshot = await usersRef.orderByChild('username').equalTo(userData.username).once('value');
+    
+    if (snapshot.exists()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username already exists'
+      });
+    }
+
+    // Generate user ID
+    const userId = `${userData.role}_${Date.now()}`;
+
+    // Hash password
+    const hashedPassword = await hashPassword(userData.password);
+
+    // Prepare user data
+    const newUser = {
+      username: userData.username,
+      email: userData.email,
+      password: hashedPassword,
+      role: userData.role,
+      firstName: userData.firstName,
+      lastName: userData.lastName,
+      status: 'active',
+      createdAt: new Date().toISOString()
+    };
+
+    // Add role-specific fields
+    if (userData.role === 'student') {
+      newUser.studentNumber = userData.studentNumber;
+      newUser.program = userData.program;
+      newUser.yearLevel = userData.yearLevel;
+      newUser.section = userData.section;
+    } else if (userData.role === 'faculty') {
+      newUser.department = userData.department;
+    } else if (userData.role === 'security') {
+      newUser.gateAssignment = userData.gateAssignment;
+    }
+
+    // Save to database
+    await db.ref(`users/${userId}`).set(newUser);
+
+    // Generate QR code
+    const qrData = JSON.stringify({
+      userId,
+      username: userData.username,
+      role: userData.role
+    });
+    const qrCode = await QRCode.toDataURL(qrData);
+
+    // Remove password from response
+    const { password, ...userWithoutPassword } = newUser;
+
+    res.status(201).json({
+      success: true,
+      message: 'User created successfully',
+      user: {
+        userId,
+        ...userWithoutPassword,
+        qrCode
+      }
+    });
+
+  } catch (error) {
+    console.error('Create user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating user'
+    });
+  }
+};
+
+// Update user
+const updateUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const updateData = req.body;
+
+    // Check if user exists
+    const userSnapshot = await db.ref(`users/${userId}`).once('value');
+    
+    if (!userSnapshot.exists()) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // If password is being updated, hash it
+    if (updateData.password) {
+      updateData.password = await hashPassword(updateData.password);
+    }
+
+    // Add updated timestamp
+    updateData.updatedAt = new Date().toISOString();
+
+    // Update user data
+    await db.ref(`users/${userId}`).update(updateData);
+
+    // Fetch updated user
+    const updatedSnapshot = await db.ref(`users/${userId}`).once('value');
+    const updatedUser = updatedSnapshot.val();
+    const { password, ...userWithoutPassword } = updatedUser;
+
+    res.json({
+      success: true,
+      message: 'User updated successfully',
+      user: {
+        userId,
+        ...userWithoutPassword
+      }
+    });
+
+  } catch (error) {
+    console.error('Update user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating user'
+    });
+  }
+};
+
+// Delete user
+const deleteUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Check if user exists
+    const userSnapshot = await db.ref(`users/${userId}`).once('value');
+    
+    if (!userSnapshot.exists()) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Delete user
+    await db.ref(`users/${userId}`).remove();
+
+    res.json({
+      success: true,
+      message: 'User deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete user error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting user'
+    });
+  }
+};
+
+// Dashboard Stats Controller
+const getDashboardStats = async (req, res) => {
+  try {
+    // Get all users
+    const usersSnapshot = await db.ref('users').once('value');
+    const users = usersSnapshot.val() || {};
+
+    // Count users by role
+    let totalStudents = 0;
+    let totalFaculty = 0;
+    let totalSecurity = 0;
+    let activeUsers = 0;
+
+    Object.values(users).forEach(user => {
+      if (user.status === 'active') activeUsers++;
+      if (user.role === 'student') totalStudents++;
+      if (user.role === 'faculty') totalFaculty++;
+      if (user.role === 'security') totalSecurity++;
+    });
+
+    // Get access logs for today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayTimestamp = today.getTime();
+
+    const logsSnapshot = await db.ref('accessLogs')
+      .orderByChild('timestamp')
+      .startAt(todayTimestamp)
+      .once('value');
+
+    let todayEntries = 0;
+    let todayExits = 0;
+
+    if (logsSnapshot.exists()) {
+      logsSnapshot.forEach(logSnapshot => {
+        const log = logSnapshot.val();
+        if (log.type === 'entry') todayEntries++;
+        if (log.type === 'exit') todayExits++;
+      });
+    }
+
+    // Get violations
+    const violationsSnapshot = await db.ref('violations').once('value');
+    let activeViolations = 0;
+    let totalViolations = 0;
+
+    if (violationsSnapshot.exists()) {
+      violationsSnapshot.forEach(violationSnapshot => {
+        const violation = violationSnapshot.val();
+        totalViolations++;
+        if (violation.status === 'active') activeViolations++;
+      });
+    }
+
+    res.json({
+      success: true,
+      stats: {
+        totalStudents,
+        totalFaculty,
+        totalSecurity,
+        activeUsers,
+        todayEntries,
+        todayExits,
+        activeViolations,
+        totalViolations
+      }
+    });
+
+  } catch (error) {
+    console.error('Get dashboard stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching dashboard stats'
+    });
+  }
+};
+
+// Access Logs Controller
+const getAccessLogs = async (req, res) => {
+  try {
+    const { type, startDate, endDate, limit = 100 } = req.query;
+
+    let query = db.ref('accessLogs').orderByChild('timestamp');
+
+    // Apply date filters if provided
+    if (startDate) {
+      const start = new Date(startDate).getTime();
+      query = query.startAt(start);
+    }
+
+    if (endDate) {
+      const end = new Date(endDate).getTime();
+      query = query.endAt(end);
+    }
+
+    const snapshot = await query.limitToLast(parseInt(limit)).once('value');
+
+    let logs = [];
+    if (snapshot.exists()) {
+      snapshot.forEach(childSnapshot => {
+        const log = childSnapshot.val();
+        
+        // Filter by type if specified
+        if (type && log.type !== type) return;
+
+        logs.push({
+          logId: childSnapshot.key,
+          ...log
+        });
+      });
+    }
+
+    // Sort by timestamp descending
+    logs.sort((a, b) => b.timestamp - a.timestamp);
+
+    res.json({
+      success: true,
+      logs
+    });
+
+  } catch (error) {
+    console.error('Get access logs error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching access logs'
+    });
+  }
+};
+
+// Violations Controller
+const getViolations = async (req, res) => {
+  try {
+    const { status } = req.query;
+
+    const violationsRef = db.ref('violations');
+    const snapshot = await violationsRef.once('value');
+
+    let violations = [];
+    if (snapshot.exists()) {
+      snapshot.forEach(childSnapshot => {
+        const violation = childSnapshot.val();
+        
+        // Filter by status if specified
+        if (status && violation.status !== status) return;
+
+        violations.push({
+          violationId: childSnapshot.key,
+          ...violation
+        });
+      });
+    }
+
+    // Sort by timestamp descending
+    violations.sort((a, b) => b.timestamp - a.timestamp);
+
+    res.json({
+      success: true,
+      violations
+    });
+
+  } catch (error) {
+    console.error('Get violations error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching violations'
+    });
+  }
+};
+
+// Schedule Management Controllers
+
+// Get schedules
+const getSchedules = async (req, res) => {
+  try {
+    const { userId, day } = req.query;
+
+    let query = db.ref('schedules');
+
+    const snapshot = await query.once('value');
+
+    let schedules = [];
+    if (snapshot.exists()) {
+      snapshot.forEach(childSnapshot => {
+        const schedule = childSnapshot.val();
+        
+        // Filter by userId if specified
+        if (userId && schedule.userId !== userId) return;
+        
+        // Filter by day if specified
+        if (day && schedule.day !== day) return;
+
+        schedules.push({
+          scheduleId: childSnapshot.key,
+          ...schedule
+        });
+      });
+    }
+
+    res.json({
+      success: true,
+      schedules
+    });
+
+  } catch (error) {
+    console.error('Get schedules error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching schedules'
+    });
+  }
+};
+
+// Create schedule
+const createSchedule = async (req, res) => {
+  try {
+    const scheduleData = req.body;
+
+    // Validate required fields
+    if (!scheduleData.userId || !scheduleData.subject || !scheduleData.day || 
+        !scheduleData.startTime || !scheduleData.endTime) {
+      return res.status(400).json({
+        success: false,
+        message: 'Missing required fields'
+      });
+    }
+
+    // Generate schedule ID
+    const scheduleId = `schedule_${Date.now()}`;
+
+    const newSchedule = {
+      ...scheduleData,
+      createdAt: new Date().toISOString()
+    };
+
+    // Save to database
+    await db.ref(`schedules/${scheduleId}`).set(newSchedule);
+
+    res.status(201).json({
+      success: true,
+      message: 'Schedule created successfully',
+      schedule: {
+        scheduleId,
+        ...newSchedule
+      }
+    });
+
+  } catch (error) {
+    console.error('Create schedule error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating schedule'
+    });
+  }
+};
+
+// Update schedule
+const updateSchedule = async (req, res) => {
+  try {
+    const { scheduleId } = req.params;
+    const updateData = req.body;
+
+    // Check if schedule exists
+    const scheduleSnapshot = await db.ref(`schedules/${scheduleId}`).once('value');
+    
+    if (!scheduleSnapshot.exists()) {
+      return res.status(404).json({
+        success: false,
+        message: 'Schedule not found'
+      });
+    }
+
+    // Add updated timestamp
+    updateData.updatedAt = new Date().toISOString();
+
+    // Update schedule
+    await db.ref(`schedules/${scheduleId}`).update(updateData);
+
+    // Fetch updated schedule
+    const updatedSnapshot = await db.ref(`schedules/${scheduleId}`).once('value');
+    const updatedSchedule = updatedSnapshot.val();
+
+    res.json({
+      success: true,
+      message: 'Schedule updated successfully',
+      schedule: {
+        scheduleId,
+        ...updatedSchedule
+      }
+    });
+
+  } catch (error) {
+    console.error('Update schedule error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating schedule'
+    });
+  }
+};
+
+// Delete schedule
+const deleteSchedule = async (req, res) => {
+  try {
+    const { scheduleId } = req.params;
+
+    // Check if schedule exists
+    const scheduleSnapshot = await db.ref(`schedules/${scheduleId}`).once('value');
+    
+    if (!scheduleSnapshot.exists()) {
+      return res.status(404).json({
+        success: false,
+        message: 'Schedule not found'
+      });
+    }
+
+    // Delete schedule
+    await db.ref(`schedules/${scheduleId}`).remove();
+
+    res.json({
+      success: true,
+      message: 'Schedule deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete schedule error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting schedule'
+    });
+  }
+};
+
+// Generate Reports Controller
+const generateReports = async (req, res) => {
+  try {
+    const { type } = req.params;
+    let { startDate, endDate } = req.query;
+
+    // Calculate date range based on report type
+    const now = new Date();
+    if (!startDate || !endDate) {
+      if (type === 'daily') {
+        startDate = new Date(now.setHours(0, 0, 0, 0)).toISOString();
+        endDate = new Date(now.setHours(23, 59, 59, 999)).toISOString();
+      } else if (type === 'weekly') {
+        const weekStart = new Date(now.setDate(now.getDate() - 7));
+        startDate = weekStart.toISOString();
+        endDate = new Date().toISOString();
+      } else if (type === 'monthly') {
+        const monthStart = new Date(now.setMonth(now.getMonth() - 1));
+        startDate = monthStart.toISOString();
+        endDate = new Date().toISOString();
+      }
+    }
+
+    const startTimestamp = new Date(startDate).getTime();
+    const endTimestamp = new Date(endDate).getTime();
+
+    // Fetch access logs within date range
+    const logsSnapshot = await db.ref('accessLogs')
+      .orderByChild('timestamp')
+      .startAt(startTimestamp)
+      .endAt(endTimestamp)
+      .once('value');
+
+    let logs = [];
+    let totalEntries = 0;
+    let totalExits = 0;
+    const uniqueUsers = new Set();
+
+    if (logsSnapshot.exists()) {
+      logsSnapshot.forEach(logSnapshot => {
+        const log = logSnapshot.val();
+        logs.push(log);
+        
+        if (log.type === 'entry') totalEntries++;
+        if (log.type === 'exit') totalExits++;
+        uniqueUsers.add(log.userId);
+      });
+    }
+
+    // Sort by timestamp descending
+    logs.sort((a, b) => b.timestamp - a.timestamp);
+
+    res.json({
+      success: true,
+      report: {
+        type,
+        summary: {
+          dateRange: {
+            start: startDate,
+            end: endDate
+          },
+          totalEntries,
+          totalExits,
+          uniqueUsers: uniqueUsers.size
+        },
+        data: logs
+      }
+    });
+
+  } catch (error) {
+    console.error('Generate reports error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error generating report'
+    });
+  }
+};
+
+module.exports = {
+  getAllUsers,
+  getUserById,
+  createUser,
+  updateUser,
+  deleteUser,
+  getDashboardStats,
+  getAccessLogs,
+  getViolations,
+  getSchedules,
+  createSchedule,
+  updateSchedule,
+  deleteSchedule,
+  generateReports
+};

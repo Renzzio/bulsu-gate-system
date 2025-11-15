@@ -1,0 +1,836 @@
+/* Faculty Dashboard Styles - Matching Admin Layout */
+.faculty-layout {
+  display: flex;
+  min-height: 100vh;
+  background: var(--bulsu-gray);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.faculty-sidebar {
+  background: linear-gradient(180deg, var(--bulsu-red), var(--bulsu-dark-red));
+  color: #fff;
+  padding: var(--spacing-3xl) var(--spacing-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xl);
+  box-shadow: 2px 0 8px rgba(196, 30, 58, 0.2);
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100vh;
+  width: 240px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.faculty-sidebar .logo {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.5px;
+}
+
+.faculty-sidebar .emblem {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  display: grid;
+  place-items: center;
+}
+
+.faculty-sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.faculty-sidebar button {
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.85);
+  padding: var(--spacing-md) var(--spacing-lg);
+  border-radius: var(--radius-lg);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.faculty-sidebar button.active,
+.faculty-sidebar button:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.faculty-sidebar .logout-btn {
+  margin-top: auto;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.faculty-sidebar .logout-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.faculty-main {
+  margin-left: 240px;
+  display: flex;
+  flex-direction: column;
+}
+
+.faculty-topbar {
+  background: var(--bg-white);
+  padding: var(--spacing-lg) var(--spacing-3xl);
+  border-bottom: 1px solid var(--card-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: var(--shadow-md);
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 240px;
+  z-index: 50;
+  height: 80px;
+}
+
+.faculty-topbar h1 {
+  margin-bottom: var(--spacing-sm);
+  color: var(--text-dark);
+  font-size: 1.5rem;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-lg);
+}
+
+.topbar-user {
+  display: flex;
+  flex-direction: column;
+  text-align: right;
+}
+
+.topbar-user span {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  background: #667eea;
+  padding: 0.25rem 0.5rem;
+  border-radius: 8px;
+  color: white;
+  font-weight: 500;
+  text-transform: uppercase;
+}
+
+.faculty-content {
+  flex: 1;
+  margin-top: 80px; /* Account for fixed topbar */
+  padding: var(--spacing-3xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2xl);
+  overflow-y: auto;
+}
+
+.dashboard-content {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.welcome-card {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.welcome-card h2 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.75rem;
+}
+
+.welcome-card p {
+  margin: 0;
+  color: #666;
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.dashboard-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-align: center;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+}
+
+.stat-card h3 {
+  margin: 0 0 1rem 0;
+  color: #666;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.stat-value {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #667eea;
+  margin: 0;
+}
+
+.quick-actions {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.quick-actions h3 {
+  margin: 0 0 1.5rem 0;
+  color: #333;
+  font-size: 1.25rem;
+}
+
+.action-buttons {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.action-button {
+  background: #f8f9fa;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  text-align: left;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  font-weight: 500;
+  color: #495057;
+}
+
+.action-button:hover {
+  background: #667eea;
+  border-color: #667eea;
+  color: white;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .dashboard-content {
+    padding: 1rem;
+  }
+
+  .action-buttons {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-header {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .header-left {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .header-right {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .welcome-card {
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .welcome-card h2 {
+    font-size: 1.5rem;
+  }
+
+  .dashboard-stats {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .stat-card {
+    padding: 1.25rem;
+  }
+
+  .quick-actions {
+    padding: 1.5rem;
+  }
+}
+
+/* Schedule Overview Section */
+.schedule-overview-section {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.schedule-overview-section h3 {
+  margin: 0 0 1.5rem 0;
+  color: #333;
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.view-department-btn {
+  background: #667eea;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.view-department-btn:hover {
+  background: #5a67d8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+}
+
+.schedule-overview-content {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 2rem;
+}
+
+.overview-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1.5rem;
+  text-align: center;
+  border: 1px solid #e9ecef;
+}
+
+.overview-card h4 {
+  margin: 0 0 1rem 0;
+  color: #495057;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.classes-count {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.count-number {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #667eea;
+}
+
+.classes-count small {
+  color: #6c757d;
+  font-size: 0.85rem;
+}
+
+.week-schedule {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+}
+
+.day-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.day-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #495057;
+  text-transform: uppercase;
+}
+
+.day-classes {
+  width: 100%;
+  height: 20px;
+  background: #667eea;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  color: white;
+  font-weight: 500;
+}
+
+/* Students Section */
+.students-section {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.students-section h3 {
+  margin: 0 0 1.5rem 0;
+  color: #333;
+  font-size: 1.25rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.loading-container {
+  text-align: center;
+  padding: 2rem;
+}
+
+.loading {
+  color: #667eea;
+  font-size: 1.1rem;
+}
+
+.no-students {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}
+
+.students-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1rem;
+}
+
+.student-card {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.student-card:hover {
+  background: #fff;
+  border-color: #667eea;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+  transform: translateY(-1px);
+}
+
+.student-info {
+  flex: 1;
+}
+
+.student-name {
+  font-size: 1.1rem;
+  color: #333;
+  margin-bottom: 0.25rem;
+}
+
+.student-id {
+  color: #666;
+  font-size: 0.85rem;
+  margin-bottom: 0.5rem;
+}
+
+.student-details {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.detail {
+  background: white;
+  border: 1px solid #dee2e6;
+  color: #495057;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.student-actions {
+  display: flex;
+  align-items: center;
+}
+
+.view-schedule-btn {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.view-schedule-btn:hover {
+  background: #218838;
+  transform: translateY(-1px);
+}
+
+/* Schedule Modal */
+.schedule-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  z-index: 1000;
+}
+
+.schedule-modal-content {
+  background: white;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 800px;
+  max-height: 80vh;
+  overflow: hidden;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+
+.schedule-modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8f9fa;
+}
+
+.schedule-modal-header h3 {
+  margin: 0;
+  color: #495057;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.schedule-close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #6c757d;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.schedule-close-btn:hover {
+  background: #e9ecef;
+}
+
+.schedule-modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  max-height: calc(80vh - 100px);
+}
+
+.schedule-loading,
+.schedule-empty {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}
+
+.schedule-loading {
+  color: #667eea;
+}
+
+.faculty-schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.faculty-schedule-table th {
+  background: #f8f9fa;
+  color: #495057;
+  padding: 1rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.faculty-schedule-table td {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e9ecef;
+  vertical-align: top;
+}
+
+.faculty-schedule-table tbody tr:hover {
+  background: #f8f9fa;
+}
+
+/* Department Schedules Modal */
+.department-schedule-modal {
+  max-width: 1200px;
+}
+
+.department-schedule-table th {
+  background: #f8f9fa;
+  color: #495057;
+  padding: 0.75rem 0.5rem;
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.department-schedule-table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid #e9ecef;
+  vertical-align: top;
+  font-size: 0.85rem;
+}
+
+/* Responsive Design Updates */
+@media (max-width: 768px) {
+  .students-section {
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .students-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .student-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .student-actions {
+    justify-content: center;
+  }
+
+  .schedule-modal-overlay {
+    padding: 1rem;
+  }
+
+  .schedule-modal-content {
+    max-width: none;
+    max-height: 90vh;
+  }
+
+  .faculty-schedule-table th,
+  .faculty-schedule-table td {
+    padding: 0.5rem 0.5rem;
+    font-size: 0.875rem;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .faculty-sidebar {
+    width: 80px;
+  }
+
+  .faculty-sidebar span {
+    display: none;
+  }
+
+  .faculty-sidebar button {
+    justify-content: center;
+  }
+
+  .faculty-main {
+    margin-left: 80px;
+  }
+
+  .faculty-topbar {
+    left: 80px;
+    right: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .faculty-sidebar {
+    height: auto;
+    width: 100%;
+    flex-direction: row;
+    padding: var(--spacing-sm);
+    position: static;
+    background: linear-gradient(90deg, var(--bulsu-red), var(--bulsu-dark-red));
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .faculty-sidebar .logo,
+  .faculty-sidebar span { display: none; }
+
+  .faculty-sidebar nav {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--spacing-xs);
+    flex: 1;
+  }
+
+  .faculty-sidebar nav button {
+    padding: var(--spacing-sm);
+    font-size: var(--font-size-sm);
+    justify-content: center;
+  }
+
+  .faculty-main {
+    margin-left: 0;
+  }
+
+  .faculty-topbar {
+    position: static;
+    left: 0;
+  }
+
+  .faculty-content {
+    margin-left: 0;
+    margin-top: 0;
+    padding: var(--spacing-lg);
+    padding-top: var(--spacing-lg);
+  }
+
+  .students-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .student-card {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .student-actions {
+    justify-content: center;
+  }
+
+  .schedule-modal-overlay {
+    padding: 1rem;
+  }
+
+  .schedule-modal-content {
+    max-width: none;
+    max-height: 90vh;
+  }
+
+  .faculty-schedule-table th,
+  .faculty-schedule-table td {
+    padding: 0.5rem 0.5rem;
+    font-size: 0.875rem;
+  }
+
+  .dashboard-stats {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .students-section {
+    padding: 1rem;
+  }
+
+  .students-section h3 {
+    font-size: 1rem;
+  }
+
+  .student-details {
+    gap: 0.5rem;
+  }
+
+  .view-schedule-btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .schedule-modal-header {
+    padding: 1rem;
+  }
+
+  .schedule-modal-body {
+    padding: 1rem;
+  }
+
+  .faculty-topbar h1 {
+    font-size: 1.25rem;
+  }
+
+  .stat-value {
+    font-size: 2rem;
+  }
+
+  .action-button {
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+  }
+}

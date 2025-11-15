@@ -6,6 +6,7 @@ import AdminDashboard from './components/AdminDashboard';
 import FacultyDashboard from './components/FacultyDashboard';
 import SecurityDashboard from './components/SecurityDashboard';
 import StudentDashboard from './components/StudentDashboard';
+import ChangePassword from './components/ChangePassword';
 import { verifyToken } from './services/authService';
 
 function App() {
@@ -57,13 +58,21 @@ function App() {
     return <Login onLogin={handleLogin} />;
   }
 
+  // Check if user needs to change password on first login
+  if (user.firstTimeLogin) {
+    return <ChangePassword user={user} onPasswordChanged={() => {
+      // Refresh user data after password change
+      checkAuth();
+    }} />;
+  }
+
   // Render dashboard based on user role
   switch (user.role) {
     case 'admin':
       return <AdminDashboard user={user} onLogout={handleLogout} />;
     case 'faculty':
       return <FacultyDashboard user={user} onLogout={handleLogout} />;
-    case 'security':
+    case 'guard':
       return <SecurityDashboard user={user} onLogout={handleLogout} />;
     case 'student':
       return <StudentDashboard user={user} onLogout={handleLogout} />;

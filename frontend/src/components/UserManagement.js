@@ -27,6 +27,24 @@ function UserManagement({ role = 'admin' }) {
   const [campuses, setCampuses] = useState([]);
   const [gates, setGates] = useState([]);
 
+  // Department options for faculty and students
+  const departmentOptions = [
+    { label: 'College of Architecture and Fine Arts', value: 'CAFA' },
+    { label: 'College of Arts and Letters', value: 'CAL' },
+    { label: 'College of Business Education and Accountancy', value: 'CBEA' },
+    { label: 'College of Criminal Justice Education', value: 'CCJE' },
+    { label: 'College of Hospitality and Tourism Management', value: 'CHTM' },
+    { label: 'College of Information and Communications Technology', value: 'CICT' },
+    { label: 'College of Industrial Technology', value: 'CIT' },
+    { label: 'College of Law', value: 'CLaw' },
+    { label: 'College of Nursing', value: 'CON' },
+    { label: 'College of Engineering', value: 'COE' },
+    { label: 'College of Education', value: 'COED' },
+    { label: 'College of Science', value: 'CS' },
+    { label: 'College of Sports, Exercise and Recreation', value: 'CSER' },
+    { label: 'College of Social Sciences and Philosophy', value: 'CSSP' }
+  ];
+
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -844,14 +862,19 @@ function UserManagement({ role = 'admin' }) {
                   <div className="form-row">
                     <div className="form-group">
                       <label>Department *</label>
-                      <input
-                        type="text"
+                      <select
                         name="facultyDepartment"
                         value={formData.facultyDepartment}
                         onChange={handleInputChange}
-                        placeholder="e.g., Computer Science"
                         required
-                      />
+                      >
+                        <option value="">Select Department</option>
+                        {departmentOptions.map(option => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div className="form-group">
                       <label>Position *</label>
@@ -949,14 +972,19 @@ function UserManagement({ role = 'admin' }) {
                   <div className="form-row">
                     <div className="form-group">
                       <label>Department *</label>
-                      <input
-                        type="text"
+                      <select
                         name="studentDepartment"
                         value={formData.studentDepartment}
                         onChange={handleInputChange}
-                        placeholder="e.g., College of Computer Studies"
                         required
-                      />
+                      >
+                        <option value="">Select Department</option>
+                        {departmentOptions.map(option => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <div className="form-group">
                       {/* Placeholder for future use or to balance the row */}
@@ -994,6 +1022,17 @@ function UserManagement({ role = 'admin' }) {
               </p>
 
               <div className="form-actions">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingUser(null);
+                    resetFormData();
+                  }}
+                >
+                  <X size={16} /> Cancel
+                </button>
                 <button type="submit" className="btn btn-success" disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {loading ? (
                     editingUser ? 'Updating...' : 'Creating...'
@@ -1008,17 +1047,6 @@ function UserManagement({ role = 'admin' }) {
                       </>
                     )
                   )}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingUser(null);
-                    resetFormData();
-                  }}
-                >
-                  <X size={16} /> Cancel
                 </button>
               </div>
             </form>
@@ -1039,9 +1067,9 @@ function UserManagement({ role = 'admin' }) {
                 <th>Name</th>
                 <th>Username</th>
                 <th>Email</th>
+                <th>Department</th>
                 <th>Role</th>
                 <th>Status</th>
-                <th>Created</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -1054,7 +1082,15 @@ function UserManagement({ role = 'admin' }) {
                   <td>{user.username}</td>
                   <td>{user.email}</td>
                   <td>
-                    <span 
+                    {user.role === 'faculty' || user.role === 'staff' ?
+                      (user.department || 'N/A') :
+                      user.role === 'student' ?
+                      (user.studentDepartment || 'N/A') :
+                      '-'
+                    }
+                  </td>
+                  <td>
+                    <span
                       className="role-badge"
                       style={{ backgroundColor: getRoleColor(user.role) }}
                     >
@@ -1071,45 +1107,49 @@ function UserManagement({ role = 'admin' }) {
                       {user.status.toUpperCase()}
                     </span>
                   </td>
-                  <td>{new Date(user.createdAt).toLocaleDateString()}</td>
                   <td>
-                    <div className="action-buttons">
+                    <div className="action-buttons" style={{ display: 'flex', gap: '4px', justifyContent: 'flex-start' }}>
                       <button
                         className="btn-action btn-view"
                         onClick={() => handleViewUser(user)}
                         title="View user details"
+                        style={{ padding: '6px 8px', fontSize: '12px' }}
                       >
-                        <Eye size={16} />
+                        <Eye size={14} />
                       </button>
                       <button
                         className="btn-action btn-edit"
                         onClick={() => handleEditUser(user)}
                         title="Edit user"
+                        style={{ padding: '6px 8px', fontSize: '12px' }}
                       >
-                        <Edit size={16} />
+                        <Edit size={14} />
                       </button>
                       <button
                         className="btn-action btn-qr"
                         onClick={() => handleGenerateQR(user)}
                         title="Generate QR code"
+                        style={{ padding: '6px 8px', fontSize: '12px' }}
                       >
-                        <QrCode size={16} />
+                        <QrCode size={14} />
                       </button>
                       {user.status === 'active' ? (
                         <button
                           className="btn-action btn-deactivate"
                           onClick={() => handleDeactivateUser(user.userId)}
                           title="Deactivate user"
+                          style={{ padding: '6px 8px', fontSize: '12px' }}
                         >
-                          <Lock size={16} />
+                          <Lock size={14} />
                         </button>
                       ) : (
                         <button
                           className="btn-action btn-activate"
                           onClick={() => handleActivateUser(user.userId)}
                           title="Activate user"
+                          style={{ padding: '6px 8px', fontSize: '12px' }}
                         >
-                          <Unlock size={16} />
+                          <Unlock size={14} />
                         </button>
                       )}
                     </div>

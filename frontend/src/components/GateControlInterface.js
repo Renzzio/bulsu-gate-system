@@ -24,7 +24,7 @@ const GateControlInterface = ({ user, onLogout }) => {
   const [scanError, setScanError] = useState('');
   const [selectedViolation, setSelectedViolation] = useState('');
   const [violationNotes, setViolationNotes] = useState('');
-  const [pendingScanData, setPendingScanData] = useState(null);
+  const [approvalData, setApprovalData] = useState(null);
 
   // Range options (simplified since we only want latest)
   const rangeOptions = [
@@ -151,7 +151,7 @@ const GateControlInterface = ({ user, onLogout }) => {
           });
         }
       } else {
-        // For student scans, first check if access would be allowed normally
+        // For students: Immediate schedule check
         const payload = {
           studentId: scannedId,
           scanType,
@@ -160,19 +160,27 @@ const GateControlInterface = ({ user, onLogout }) => {
 
         const response = await gateService.scanStudent(payload);
 
-        // If access would be granted, ask guard about violations
-        if (response.allowed) {
-          // Store pending scan data
-          setPendingScanData({
+        if (scanType === 'exit') {
+          // Exits always auto-grant access
+          setStatus({
+            type: 'success',
+            message: response.message,
+            details: response
+          });
+        } else if (response.allowed) {
+          // Entries with schedule: show approval UI
+          setApprovalData({
             studentId: scannedId,
             scanType,
             gateId,
-            normalResponse: response
+            studentName: response.log?.studentName,
+            campusName: response.log?.campusName,
+            scheduleSummary: response.log?.scheduleSummary
           });
-          setLoading(false); // Reset loading state
-          return; // Exit early, don't show status yet
+          setLoading(false);
+          return;
         } else {
-          // Access would be denied anyway, show denied status directly
+          // Entries without schedule: show denied status
           setStatus({
             type: 'warning',
             message: response.message,
@@ -207,17 +215,17 @@ const GateControlInterface = ({ user, onLogout }) => {
     }
   };
 
-  // Process the scan with optional violation reporting
-  const processScanWithViolation = async () => {
-    if (!pendingScanData) return;
+  // Process approval with optional violation
+  const processApproval = async () => {
+    if (!approvalData) return;
 
     setLoading(true);
 
     try {
       const payload = {
-        studentId: pendingScanData.studentId,
-        scanType: pendingScanData.scanType,
-        gateId: pendingScanData.gateId
+        studentId: approvalData.studentId,
+        scanType: approvalData.scanType,
+        gateId: approvalData.gateId
       };
 
       // Add violation info if selected
@@ -228,68 +236,31 @@ const GateControlInterface = ({ user, onLogout }) => {
 
       const response = await gateService.scanStudent(payload);
       setStatus({
-        type: response.allowed ? 'success' : 'warning',
-        message: response.violationRecorded
-          ? `${response.message} • Violation noted: ${selectedViolation}`
-          : response.message,
-        details: response
-      });
-
-      // Clear inputs and violation data
-      setScanInput('');
-      setSelectedViolation('');
-      setViolationNotes('');
-      setPendingScanData(null);
-
-      // Refresh latest log
-      setTimeout(() => {
-        fetchLatestLog();
-      }, 500);
-    } catch (error) {
-      console.error('Scan with violation error:', error);
-      setStatus({
-        type: 'error',
-        message: error.message || 'Scan failed',
-        details: error
-      });
-      setPendingScanData(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Skip violation reporting and process normal scan
-  const processScanWithoutViolation = async () => {
-    if (!pendingScanData) return;
-
-    setLoading(true);
-
-    try {
-      const response = pendingScanData.normalResponse;
-      setStatus({
         type: 'success',
-        message: response.message,
+        message: response.violationRecorded
+          ? `Access Approved • Violation noted: ${selectedViolation}`
+          : 'Access Approved',
         details: response
       });
 
-      // Clear inputs
+      // Clear inputs and approval data
       setScanInput('');
       setSelectedViolation('');
       setViolationNotes('');
-      setPendingScanData(null);
+      setApprovalData(null);
 
       // Refresh latest log
       setTimeout(() => {
         fetchLatestLog();
       }, 500);
     } catch (error) {
-      console.error('Normal scan error:', error);
+      console.error('Approval error:', error);
       setStatus({
         type: 'error',
-        message: error.message || 'Scan failed',
+        message: error.message || 'Approval failed',
         details: error
       });
-      setPendingScanData(null);
+      setApprovalData(null);
     } finally {
       setLoading(false);
     }
@@ -473,7 +444,7 @@ const GateControlInterface = ({ user, onLogout }) => {
     }
   };
 
-  const handleQRScanSuccess = (decodedText) => {
+  const handleQRScanSuccess = async (decodedText) => {
     // Extract userID from QR code
     // The QR code could be a userID or a visitor code (VIS- prefixed)
     const scannedId = decodedText.trim();
@@ -492,25 +463,77 @@ const GateControlInterface = ({ user, onLogout }) => {
       setCameraActive(false);
     }
 
-    // Check if this is a visitor QR code
-    const isVisitor = scannedId.startsWith('VIS-');
-    let validationMessage = '';
+    try {
+      // Check if this is a visitor QR code
+      if (scannedId.startsWith('VIS-')) {
+        // Process visitor QR scan directly
+        const result = await visitorService.processVisitorScan(scannedId, scanType, gateId);
 
-    if (isVisitor) {
-      validationMessage = `Visitor QR Code scanned! ID: ${scannedId}`;
-    } else {
-      validationMessage = `Student ID scanned successfully! ID: ${scannedId}`;
+        if (result.success && result.allowed) {
+          setStatus({
+            type: 'success',
+            message: `${result.message} - Usage: ${result.visitor.usageCount}/${result.visitor.maxUses}`,
+            details: { visitor: result.visitor, actionType: result.actionType }
+          });
+        } else {
+          setStatus({
+            type: 'warning',
+            message: `${result.message}`,
+            details: result
+          });
+        }
+      } else {
+        // For students: Immediate schedule check and approval UI
+        const payload = {
+          studentId: scannedId,
+          scanType: scanType,
+          gateId: gateId
+        };
+
+        const response = await gateService.scanStudent(payload);
+
+        if (scanType === 'exit') {
+          // Exits always auto-grant access - no approval UI needed
+          setStatus({
+            type: 'success',
+            message: response.message,
+            details: response
+          });
+        } else if (response.allowed) {
+          // Entries with schedule: automatically show approval UI
+          setApprovalData({
+            studentId: scannedId,
+            scanType: scanType,
+            gateId: gateId,
+            studentName: response.log?.studentName,
+            campusName: response.log?.campusName,
+            scheduleSummary: response.log?.scheduleSummary
+          });
+        } else {
+          // Entries without schedule: show denied status
+          setStatus({
+            type: 'warning',
+            message: response.message,
+            details: response
+          });
+          // Clear input for next scan
+          setScanInput('');
+        }
+      }
+
+      // Refresh latest log
+      setTimeout(() => {
+        fetchLatestLog();
+      }, 500);
+    } catch (error) {
+      console.error('QR scan processing error:', error);
+      setStatus({
+        type: 'error',
+        message: error.message || 'Scan processing failed',
+        details: error
+      });
+      setScanInput('');
     }
-
-    setStatus({
-      type: 'success',
-      message: validationMessage
-    });
-
-    // Clear the success message after 2 seconds
-    setTimeout(() => {
-      setStatus(null);
-    }, 2000);
   };
 
   const toggleCamera = async (e) => {
@@ -683,10 +706,191 @@ const GateControlInterface = ({ user, onLogout }) => {
 
 
               <button type="submit" className="scan-submit" disabled={loading}>
-                {loading ? 'Checking...' : 'Scan & Verify'}
+                {loading ? 'Checking...' : 'Submit'}
               </button>
             </form>
+
+            {/* Clear approval UI when needed */}
+            {approvalData && (
+              <div style={{ margin: '10px 0', textAlign: 'center' }}>
+                <button
+                  onClick={() => setApprovalData(null)}
+                  style={{
+                    padding: '8px 16px',
+                    backgroundColor: '#6c757d',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  Clear & Start New Scan
+                </button>
+              </div>
+            )}
           </div>
+
+          {/* Inline Approval UI for students with schedule */}
+          {approvalData && (
+            <div style={{
+              margin: '20px 0',
+              padding: '20px',
+              backgroundColor: '#e8f5e8',
+              border: '1px solid #c8e6c9',
+              borderRadius: '12px'
+            }}>
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <h3 style={{ margin: '0 0 8px 0', color: '#2e7d2e', fontSize: '20px' }}>
+                  🏫 Student Schedule Confirmed
+                </h3>
+                <p style={{ margin: '0', color: '#2e7d2e', fontSize: '16px' }}>
+                  <strong>{approvalData.studentName || approvalData.studentId}</strong> has classes today
+                </p>
+                {approvalData.campusName && (
+                  <p style={{ margin: '4px 0 0 0', color: '#2e7d2e', fontSize: '14px', fontStyle: 'italic' }}>
+                    📍 {approvalData.campusName}
+                  </p>
+                )}
+                {approvalData.scheduleSummary && (
+                  <div style={{ marginTop: '10px', fontSize: '14px', color: '#2e7d2e' }}>
+                    <p><strong>Subject:</strong> {approvalData.scheduleSummary.subjectName}</p>
+                    <p><strong>Time:</strong> {approvalData.scheduleSummary.startTime} - {approvalData.scheduleSummary.endTime}</p>
+                    <p><strong>Room:</strong> {approvalData.scheduleSummary.room}</p>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: '600',
+                  color: '#495057',
+                  fontSize: '14px'
+                }}>
+                  Report Violation (Optional):
+                </label>
+                <select
+                  value={selectedViolation}
+                  onChange={(e) => setSelectedViolation(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  <option value="">No violation - Grant access normally</option>
+                  <option value="No Student ID">No Student ID</option>
+                  <option value="Inappropriate Uniform">Inappropriate Uniform</option>
+                  <option value="Other">Other (specify below)</option>
+                </select>
+              </div>
+
+              {selectedViolation === 'Other' && (
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontWeight: '600',
+                    color: '#495057',
+                    fontSize: '14px'
+                  }}>
+                    Violation Details:
+                  </label>
+                  <input
+                    type="text"
+                    value={violationNotes}
+                    onChange={(e) => setViolationNotes(e.target.value)}
+                    placeholder="Describe the violation..."
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              )}
+
+              {selectedViolation && selectedViolation !== 'Other' && (
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontWeight: '600',
+                    color: '#495057',
+                    fontSize: '14px'
+                  }}>
+                    Additional Notes (Optional):
+                  </label>
+                  <input
+                    type="text"
+                    value={violationNotes}
+                    onChange={(e) => setViolationNotes(e.target.value)}
+                    placeholder="Any additional details..."
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              )}
+
+              <div style={{
+                backgroundColor: selectedViolation ? '#fff3cd' : '#f8f9fa',
+                border: selectedViolation ? '1px solid #ffeaa7' : '1px solid #dee2e6',
+                borderRadius: '6px',
+                padding: '12px',
+                marginBottom: '20px',
+                fontSize: '13px',
+                color: selectedViolation ? '#856404' : '#6c757d'
+              }}>
+                {selectedViolation ? (
+                  <>
+                    <strong>⚠️ Will report:</strong> {selectedViolation}
+                    {violationNotes && (
+                      <div style={{ marginTop: '4px' }}>
+                        <strong>Details:</strong> {violationNotes}
+                      </div>
+                    )}
+                    <div style={{ marginTop: '8px', fontStyle: 'italic' }}>
+                      Access will be granted, but violation will be logged for admin review.
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <strong>✓ Normal access:</strong> Student will be granted access without violation reports.
+                  </>
+                )}
+              </div>
+
+              <button
+                onClick={processApproval}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '14px 20px',
+                  backgroundColor: selectedViolation ? '#dc3545' : '#28a745',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  fontSize: '16px',
+                  fontWeight: '600'
+                }}
+              >
+                {loading ? 'Processing...' : (selectedViolation ? 'Report Violation & Grant Access' : 'Grant Access')}
+              </button>
+            </div>
+          )}
 
           {status && (
             <div className={`scan-status-large ${status.type}`} style={{
@@ -772,222 +976,6 @@ const GateControlInterface = ({ user, onLogout }) => {
           </div>
         </section>
       </div>
-
-      {/* Violation Panel - Right Side */}
-      {pendingScanData && (
-        <section className="violation-panel" style={{
-          position: 'fixed',
-          right: '24px',
-          top: '24px',
-          bottom: '24px',
-          width: '350px',
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          padding: '24px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
-          border: '1px solid #e9ecef',
-          zIndex: 100,
-          overflowY: 'auto'
-        }}>
-          <div style={{
-            backgroundColor: '#e8f5e8',
-            border: '1px solid #c8e6c9',
-            borderRadius: '8px',
-            padding: '16px',
-            marginBottom: '20px'
-          }}>
-              <h3 style={{ margin: '0 0 8px 0', color: '#2e7d2e', fontSize: '18px' }}>
-                ✅ Access Granted
-              </h3>
-              <p style={{ margin: '0', color: '#2e7d2e', fontSize: '16px' }}>
-                <strong>{pendingScanData.normalResponse?.log?.studentName || pendingScanData.studentId}</strong> can enter.
-              </p>
-              {pendingScanData.normalResponse?.log?.campusName && (
-                <p style={{ margin: '4px 0 0 0', color: '#2e7d2e', fontSize: '14px', fontStyle: 'italic' }}>
-                  📍 {pendingScanData.normalResponse.log.campusName}
-                </p>
-              )}
-              <p style={{ margin: '4px 0 0 0', color: '#2e7d2e', fontSize: '14px', fontStyle: 'italic' }}>
-                Check for violations before granting entry
-              </p>
-          </div>
-
-          <h3 style={{ marginTop: 0, marginBottom: '16px', color: '#495057' }}>
-            Report Violation (Optional)
-          </h3>
-
-          <div style={{ marginBottom: '16px' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '8px',
-              fontWeight: '600',
-              color: '#495057',
-              fontSize: '14px'
-            }}>
-              Violation Type:
-            </label>
-            <select
-              value={selectedViolation}
-              onChange={(e) => setSelectedViolation(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid #ddd',
-                borderRadius: '6px',
-                fontSize: '14px',
-                backgroundColor: 'white'
-              }}
-            >
-              <option value="">No violation - Proceed normally</option>
-              <option value="Inappropriate Uniform">Inappropriate Uniform</option>
-              <option value="No Student ID">No Student ID</option>
-              <option value="Late">Late (after class start)</option>
-              <option value="Unauthorized Item">Unauthorized Item</option>
-              <option value="Disrupting Behavior">Disrupting Behavior</option>
-              <option value="Other">Other (specify below)</option>
-            </select>
-          </div>
-
-          {(selectedViolation === 'Other') && (
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontWeight: '600',
-                color: '#495057',
-                fontSize: '14px'
-              }}>
-                Violation Details:
-              </label>
-              <input
-                type="text"
-                value={violationNotes}
-                onChange={(e) => setViolationNotes(e.target.value)}
-                placeholder="Describe the violation..."
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  fontSize: '14px'
-                }}
-              />
-            </div>
-          )}
-
-          {selectedViolation && selectedViolation !== 'Other' && (
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                fontWeight: '600',
-                color: '#495057',
-                fontSize: '14px'
-              }}>
-                Additional Notes (Optional):
-              </label>
-              <input
-                type="text"
-                value={violationNotes}
-                onChange={(e) => setViolationNotes(e.target.value)}
-                placeholder="Any additional details..."
-                style={{
-                  width: '100%',
-                  padding: '10px 12px',
-                  border: '1px solid #ddd',
-                  borderRadius: '6px',
-                  fontSize: '14px'
-                }}
-              />
-            </div>
-          )}
-
-          <div style={{
-            backgroundColor: selectedViolation ? '#fff3cd' : '#f8f9fa',
-            border: selectedViolation ? '1px solid #ffeaa7' : '1px solid #dee2e6',
-            borderRadius: '6px',
-            padding: '12px',
-            marginBottom: '20px',
-            fontSize: '13px',
-            color: selectedViolation ? '#856404' : '#6c757d'
-          }}>
-            {selectedViolation ? (
-              <>
-                <strong>⚠️ Violation to report:</strong> {selectedViolation}
-                {violationNotes && (
-                  <div style={{ marginTop: '4px' }}>
-                    <strong>Details:</strong> {violationNotes}
-                  </div>
-                )}
-                <div style={{ marginTop: '8px', fontStyle: 'italic' }}>
-                  Student will still be granted access, but the violation will be logged and sent to admin.
-                </div>
-              </>
-            ) : (
-              <>
-                <strong>✓ No violation:</strong> Student will be granted normal access.
-                <div style={{ marginTop: '4px', fontStyle: 'italic' }}>
-                  Access granted without any reported violations.
-                </div>
-              </>
-            )}
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button
-              onClick={processScanWithoutViolation}
-              disabled={loading}
-              style={{
-                padding: '12px 20px',
-                backgroundColor: selectedViolation ? '#6c757d' : '#28a745',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                fontWeight: '500',
-                width: '100%'
-              }}
-            >
-              {loading ? 'Processing...' : (selectedViolation ? 'Cancel Violation' : 'Grant Access')}
-            </button>
-
-            {selectedViolation && (
-              <button
-                onClick={processScanWithViolation}
-                disabled={loading}
-                style={{
-                  padding: '12px 20px',
-                  backgroundColor: '#dc3545',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  width: '100%'
-                }}
-              >
-                {loading ? 'Processing...' : 'Report & Grant Access'}
-              </button>
-            )}
-          </div>
-
-          <div style={{
-            marginTop: '16px',
-            padding: '12px',
-            backgroundColor: 'transparent',
-            border: '1px solid #dee2e6',
-            borderRadius: '6px',
-            fontSize: '12px',
-            color: '#6c757d',
-            textAlign: 'center'
-          }}>
-            Student will be granted access in all cases.
-            Violation reports help administrators monitor policy compliance.
-          </div>
-        </section>
-      )}
     </div>
   );
 };

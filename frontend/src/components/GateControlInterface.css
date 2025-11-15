@@ -1,20 +1,19 @@
 .gate-interface {
   display: flex;
+  justify-content: center;
   flex-direction: column;
   gap: var(--spacing-2xl);
+  padding: var(--spacing-2xl);
 }
 
 .gate-grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: var(--spacing-2xl);
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  max-width: 1200px; /* Limit max width for better layout */
 }
 
-@media (max-width: 1100px) {
-  .gate-grid {
-    grid-template-columns: 1fr;
-  }
-}
+
 
 .scanner-panel,
 .violation-panel,

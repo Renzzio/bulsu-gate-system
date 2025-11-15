@@ -107,7 +107,7 @@
 }
 
 .btn-success {
-  background: var(--accent-cyan);
+  background: var(--bulsu-red);
   color: white;
   width: 100%;
 }
@@ -226,6 +226,7 @@
 .form-actions {
   display: flex;
   gap: var(--spacing-md);
+  justify-content: flex-end;
   margin-top: var(--spacing-xl);
 }
 
@@ -256,6 +257,7 @@
 }
 
 .um-table th {
+  color: white;
   padding: var(--spacing-lg);
   text-align: left;
   font-weight: var(--font-weight-semibold);
@@ -312,7 +314,7 @@
 }
 
 .btn-action {
-  background: none;
+  background: rgba(128, 128, 128, 0.1);
   border: none;
   font-size: var(--font-size-lg);
   cursor: pointer;
@@ -322,23 +324,53 @@
   color: var(--text-muted);
 }
 
-.btn-view:hover {
+.btn-view {
   background: rgba(0, 102, 255, 0.1);
   color: var(--accent-blue);
 }
 
-.btn-edit:hover {
+.btn-view:hover {
+  background: rgba(0, 102, 255, 0.2);
+  color: var(--accent-blue);
+}
+
+.btn-edit {
   background: rgba(0, 188, 212, 0.1);
   color: var(--accent-cyan);
 }
 
-.btn-deactivate:hover {
+.btn-edit:hover {
+  background: rgba(0, 188, 212, 0.2);
+  color: var(--accent-cyan);
+}
+
+.btn-qr {
+  background: rgba(102, 187, 106, 0.1);
+  color: #4CAF50;
+}
+
+.btn-qr:hover {
+  background: rgba(102, 187, 106, 0.2);
+  color: #4CAF50;
+}
+
+.btn-deactivate {
   background: rgba(255, 193, 7, 0.1);
   color: #FFC107;
 }
 
-.btn-activate:hover {
+.btn-deactivate:hover {
+  background: rgba(255, 193, 7, 0.2);
+  color: #FFC107;
+}
+
+.btn-activate {
   background: rgba(0, 188, 212, 0.1);
+  color: var(--accent-cyan);
+}
+
+.btn-activate:hover {
+  background: rgba(0, 188, 212, 0.2);
   color: var(--accent-cyan);
 }
 
@@ -436,7 +468,6 @@
 
 .modal-content h3 {
   margin: 0 0 var(--spacing-md) 0;
-  color: var(--text-dark);
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-semibold);
 }

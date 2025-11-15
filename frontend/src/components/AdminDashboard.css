@@ -25,9 +25,18 @@
 .admin-sidebar .logo {
   display: flex;
   align-items: center;
+  
   gap: var(--spacing-md);
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.5px;
+}
+
+.admin-sidebar .logo img {
+  margin-left: 45px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .admin-sidebar .emblem {
@@ -102,20 +111,36 @@
   text-align: right;
 }
 
+.topbar-user strong {
+  font-size: var(--font-size-sm);
+  color: var(--text-dark);
+  margin-bottom: var(--spacing-xs);
+}
+
 .topbar-user span {
   font-size: var(--font-size-xs);
-  color: var(--text-muted);
+  font-weight: var(--font-weight-bold);
+  color: white;
+  background-color: #dc3545;
+  border-radius: 50%;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin-top: var(--spacing-xs);
 }
 
 .outline-btn {
   border: 1px solid var(--bulsu-red);
   color: var(--bulsu-red);
-  padding: var(--spacing-sm) var(--spacing-lg);
-  border-radius: var(--radius-full);
+  padding: 10px 20px;
+  border-radius: 10px;
   background: transparent;
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition: all 0.3s ease;
+  height: 40px;
 }
 
 .outline-btn:hover {
@@ -364,6 +389,7 @@
 }
 
 .campuses-content {
+  margin-top: 10px;
   display: flex;
   flex-direction: column;
   gap: var(--spacing-2xl);
@@ -459,18 +485,34 @@
   background: var(--bulsu-gray);
 }
 
+.actions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: var(--spacing-xs);
+}
+
+.modal-footer {
+  align-items: baseline;
+  display: flex;
+  gap: var(--spacing-md);
+  justify-content: flex-end;
+  margin-top: var(--spacing-xl);
+}
+
 .actions button {
   border: none;
   padding: var(--spacing-sm) var(--spacing-md);
   border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);
-  margin-right: var(--spacing-sm);
   cursor: pointer;
   font-weight: var(--font-weight-semibold);
   transition: all 0.2s ease;
 }
 
-.actions .view { background: rgba(0, 102, 255, 0.1); color: var(--accent-blue); }
+.actions .view { background: rgba(102, 187, 106, 0.1); color: #4CAF50; }
 .actions .view:hover { background: rgba(0, 102, 255, 0.2); }
 
 .actions .edit { background: rgba(0, 188, 212, 0.1); color: var(--accent-cyan); }

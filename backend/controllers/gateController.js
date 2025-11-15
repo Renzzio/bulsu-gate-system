@@ -49,18 +49,17 @@ const scanStudent = async (req, res) => {
     const hasScheduleToday = schedulesToday.length > 0;
     const activeSchedule = await getActiveScheduleNow(studentId);
 
-    let allowed = hasScheduleToday;
+    let allowed = true; // Allow all scans by default
     const reasons = [];
 
-    if (!hasScheduleToday) {
+    // Only restrict entries for students without schedule
+    if (scanType === 'entry' && !hasScheduleToday) {
       allowed = false;
       reasons.push('No scheduled classes for today');
     }
 
-    if (scanType === 'exit' && activeSchedule) {
-      allowed = false;
-      reasons.push(`Active class until ${activeSchedule.endTime}`);
-    }
+    // For exits, always allow - students should be able to leave anytime
+    // Remove the active class restriction for exits
 
     const violationRecorded = Boolean(violationType);
     if (violationRecorded) {

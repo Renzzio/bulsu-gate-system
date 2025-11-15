@@ -64,20 +64,20 @@ const gatesData = [
 
 const studentsData = [
   // Main Campus Students
-  { userId: 'STUDENT-001', firstName: 'Juan', lastName: 'Dela Cruz', email: 'juandc@bulsu.edu.ph', username: 'student001', studentNumber: '2021-00101', program: 'BSIT-WMAD', yearLevel: 3, section: '3A', campusId: 'MAIN-001' },
-  { userId: 'STUDENT-002', firstName: 'Maria', lastName: 'Santos', email: 'mariasantos@bulsu.edu.ph', username: 'student002', studentNumber: '2021-00102', program: 'BSIT-WMMD', yearLevel: 3, section: '3B', campusId: 'MAIN-001' },
-  { userId: 'STUDENT-003', firstName: 'Pedro', lastName: 'Garcia', email: 'pedrogarcia@bulsu.edu.ph', username: 'student003', studentNumber: '2021-00103', program: 'BSIT-WNET', yearLevel: 2, section: '2A', campusId: 'MAIN-001' },
-  { userId: 'STUDENT-004', firstName: 'Ana', lastName: 'Reyes', email: 'anareyes@bulsu.edu.ph', username: 'student004', studentNumber: '2021-00104', program: 'BS Psychology', yearLevel: 4, section: '4A', campusId: 'MAIN-001' },
-  { userId: 'STUDENT-005', firstName: 'Carlos', lastName: 'Mendoza', email: 'carlosmendoza@bulsu.edu.ph', username: 'student005', studentNumber: '2021-00105', program: 'BS Biology', yearLevel: 2, section: '2B', campusId: 'MAIN-001' },
+  { userId: 'STUDENT-001', firstName: 'Juan', lastName: 'Dela Cruz', email: 'juandc@bulsu.edu.ph', username: 'student001', studentNumber: '2021-00101', program: 'BSIT-WMAD', yearLevel: 3, section: '3A', campusId: 'MAIN-001', studentDepartment: 'CICT' },
+  { userId: 'STUDENT-002', firstName: 'Maria', lastName: 'Santos', email: 'mariasantos@bulsu.edu.ph', username: 'student002', studentNumber: '2021-00102', program: 'BSIT-WMMD', yearLevel: 3, section: '3B', campusId: 'MAIN-001', studentDepartment: 'CICT' },
+  { userId: 'STUDENT-003', firstName: 'Pedro', lastName: 'Garcia', email: 'pedrogarcia@bulsu.edu.ph', username: 'student003', studentNumber: '2021-00103', program: 'BSIT-WNET', yearLevel: 2, section: '2A', campusId: 'MAIN-001', studentDepartment: 'CICT' },
+  { userId: 'STUDENT-004', firstName: 'Ana', lastName: 'Reyes', email: 'anareyes@bulsu.edu.ph', username: 'student004', studentNumber: '2021-00104', program: 'BS Psychology', yearLevel: 4, section: '4A', campusId: 'MAIN-001', studentDepartment: 'Psychology' },
+  { userId: 'STUDENT-005', firstName: 'Carlos', lastName: 'Mendoza', email: 'carlosmendoza@bulsu.edu.ph', username: 'student005', studentNumber: '2021-00105', program: 'BS Biology', yearLevel: 2, section: '2B', campusId: 'MAIN-001', studentDepartment: 'Science' },
 
   // HSI Campus Students
-  { userId: 'STUDENT-006', firstName: 'Isabella', lastName: 'Torres', email: 'isabellatorres@bulsu.edu.ph', username: 'student006', studentNumber: '2021-00106', program: 'MA Education', yearLevel: 1, section: '1A', campusId: 'HSI-001' },
-  { userId: 'STUDENT-007', firstName: 'Roberto', lastName: 'Luna', email: 'robertoluna@bulsu.edu.ph', username: 'student007', studentNumber: '2021-00107', program: 'MS Mathematics', yearLevel: 1, section: '1B', campusId: 'HSI-001' },
+  { userId: 'STUDENT-006', firstName: 'Isabella', lastName: 'Torres', email: 'isabellatorres@bulsu.edu.ph', username: 'student006', studentNumber: '2021-00106', program: 'MA Education', yearLevel: 1, section: '1A', campusId: 'HSI-001', studentDepartment: 'Education' },
+  { userId: 'STUDENT-007', firstName: 'Roberto', lastName: 'Luna', email: 'robertoluna@bulsu.edu.ph', username: 'student007', studentNumber: '2021-00107', program: 'MS Mathematics', yearLevel: 1, section: '1B', campusId: 'HSI-001', studentDepartment: 'Mathematics' },
 
   // Malolos Campus Students
-  { userId: 'STUDENT-008', firstName: 'Elena', lastName: 'Vargas', email: 'elenavargas@bulsu.edu.ph', username: 'student008', studentNumber: '2021-00108', program: 'BSBADMA', yearLevel: 3, section: '3A', campusId: 'MEN-001' },
-  { userId: 'STUDENT-009', firstName: 'Miguel', lastName: 'Ramos', email: 'miguelramos@bulsu.edu.ph', username: 'student009', studentNumber: '2021-00109', program: 'BS Accountancy', yearLevel: 2, section: '2B', campusId: 'MEN-001' },
-  { userId: 'STUDENT-010', firstName: 'Sofia', lastName: 'Hernandez', email: 'sofiahernandez@bulsu.edu.ph', username: 'student010', studentNumber: '2021-00110', program: 'BS Nursing', yearLevel: 4, section: '4A', campusId: 'MEN-001' }
+  { userId: 'STUDENT-008', firstName: 'Elena', lastName: 'Vargas', email: 'elenavargas@bulsu.edu.ph', username: 'student008', studentNumber: '2021-00108', program: 'BSBADMA', yearLevel: 3, section: '3A', campusId: 'MEN-001', studentDepartment: 'Business Administration' },
+  { userId: 'STUDENT-009', firstName: 'Miguel', lastName: 'Ramos', email: 'miguelramos@bulsu.edu.ph', username: 'student009', studentNumber: '2021-00109', program: 'BS Accountancy', yearLevel: 2, section: '2B', campusId: 'MEN-001', studentDepartment: 'Business Administration' },
+  { userId: 'STUDENT-010', firstName: 'Sofia', lastName: 'Hernandez', email: 'sofiahernandez@bulsu.edu.ph', username: 'student010', studentNumber: '2021-00110', program: 'BS Nursing', yearLevel: 4, section: '4A', campusId: 'MEN-001', studentDepartment: 'Nursing' }
 ];
 
 const facultyData = [
@@ -333,6 +333,7 @@ async function seedComprehensiveData() {
         program: student.program,
         yearLevel: student.yearLevel,
         section: student.section,
+        studentDepartment: student.studentDepartment,
         status: 'active',
         firstTimeLogin: true, // Force first-time password change
         createdAt: new Date().toISOString()

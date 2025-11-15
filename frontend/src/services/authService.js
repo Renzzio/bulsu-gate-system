@@ -140,6 +140,19 @@ export const updateUser = async (userId, userData) => {
   }
 };
 
+// Update own profile
+export const updateOwnProfile = async (userId, userData) => {
+  try {
+    const response = await usersAxiosInstance.put(`/${userId}/profile`, userData);
+    return response.data;
+  } catch (error) {
+    if (error.response && error.response.data) {
+      throw new Error(error.response.data.message);
+    }
+    throw new Error('Network error. Please try again.');
+  }
+};
+
 // Deactivate user
 export const deactivateUser = async (userId) => {
   try {
@@ -196,6 +209,19 @@ export const deleteUser = async (userId) => {
 export const changePassword = async (userId, passwordData) => {
   try {
     const response = await usersAxiosInstance.patch(`/${userId}/change-password`, passwordData);
+    return response.data;
+  } catch (error) {
+    if (error.response && error.response.data) {
+      throw new Error(error.response.data.message);
+    }
+    throw new Error('Network error. Please try again.');
+  }
+};
+
+// Get students in faculty's department (for faculty users only)
+export const getStudentsInFacultyDepartment = async () => {
+  try {
+    const response = await usersAxiosInstance.get('/faculty/students-department');
     return response.data;
   } catch (error) {
     if (error.response && error.response.data) {

@@ -8,6 +8,7 @@ import gateService from '../services/gateService';
 import visitorService from '../services/visitorService';
 import { exportToCSV, exportToExcel, printData } from '../utils/exportUtils';
 import { Download, FileSpreadsheet, Printer, Filter, Calendar, Eye, Edit, Trash2, QrCode } from 'lucide-react';
+import bulsuLogo from '../bulsuLogo.png';
 import './AdminDashboard.css';
 
 const sidebarItems = [
@@ -16,18 +17,15 @@ const sidebarItems = [
   { id: 'schedules', label: 'Schedules', icon: 'event_note' },
   { id: 'visitors', label: 'Visitors', icon: 'people' },
   { id: 'campuses', label: 'Campuses & Gates', icon: 'location_on' },
-  { id: 'reports', label: 'Reports', icon: 'query_stats' },
   { id: 'accessLogs', label: 'Access Logs', icon: 'assignment' },
   { id: 'violations', label: 'Violations', icon: 'warning' }
 ];
 
 function AdminDashboard({ user, onLogout }) {
   const [activeSection, setActiveSection] = useState('overview');
-  const [reportRange, setReportRange] = useState('day');
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [reportsData, setReportsData] = useState(null);
   const [accessLogsData, setAccessLogsData] = useState([]);
   const [violationsData, setViolationsData] = useState([]);
   const [campusesData, setCampusesData] = useState([]);
@@ -35,12 +33,6 @@ function AdminDashboard({ user, onLogout }) {
   const [logsLoading, setLogsLoading] = useState(false);
   const [violationsLoading, setViolationsLoading] = useState(false);
   const [campusesLoading, setCampusesLoading] = useState(false);
-  const [reportsLoading, setReportsLoading] = useState(false);
-  
-  // Date range states for reports
-  const [reportStartDate, setReportStartDate] = useState('');
-  const [reportEndDate, setReportEndDate] = useState('');
-  const [useReportDateRange, setUseReportDateRange] = useState(false);
   
   // Date range and filter states for access logs
   const [logStartDate, setLogStartDate] = useState('');
@@ -157,12 +149,7 @@ function AdminDashboard({ user, onLogout }) {
     fetchDashboardData();
   }, []);
 
-  // Fetch reports data when reports section is active
-  useEffect(() => {
-    if (activeSection === 'reports') {
-      fetchReportsData();
-    }
-  }, [activeSection, reportRange, useReportDateRange, reportStartDate, reportEndDate]);
+
 
   // Fetch access logs when access logs section is active
   useEffect(() => {
@@ -270,54 +257,7 @@ function AdminDashboard({ user, onLogout }) {
     }
   };
 
-  const fetchReportsData = async () => {
-    try {
-      setReportsLoading(true);
-      
-      // If using custom date range, fetch access logs and calculate report
-      if (useReportDateRange && reportStartDate && reportEndDate) {
-        const response = await gateService.getAccessLogs('month');
-        if (response.success && response.logs) {
-          const start = new Date(reportStartDate);
-          const end = new Date(reportEndDate);
-          end.setHours(23, 59, 59, 999);
-          
-          // Filter logs by date range
-          const filteredLogs = response.logs.filter(log => {
-            const logDate = new Date(log.timestamp);
-            return logDate >= start && logDate <= end;
-          });
-          
-          // Calculate report from filtered logs
-          const report = filteredLogs.reduce((acc, log) => {
-            acc.total += 1;
-            if (log.scanType === 'entry') acc.entries += 1;
-            if (log.scanType === 'exit') acc.exits += 1;
-            if (!log.allowed) acc.denied += 1;
-            return acc;
-          }, { total: 0, entries: 0, exits: 0, denied: 0 });
-          
-          // Get violations count (we'll approximate from denied entries)
-          report.violations = report.denied;
-          
-          setReportsData({ success: true, report });
-        }
-      } else {
-        // Use preset range
-        const response = await gateService.getReports(reportRange);
-        if (response.success) {
-          setReportsData(response);
-        } else {
-          console.error('Reports fetch failed:', response);
-        }
-      }
-    } catch (err) {
-      console.error('Reports fetch error:', err);
-      // If API fails, keep using dashboard data as fallback
-    } finally {
-      setReportsLoading(false);
-    }
-  };
+
 
   const fetchAccessLogs = async () => {
     try {
@@ -443,66 +383,7 @@ function AdminDashboard({ user, onLogout }) {
     { label: 'Violations Today', value: dashboardData.counts.violationsToday.toString(), trend: `${dashboardData.counts.deniedToday} denied` }
   ] : [];
 
-  const reportSummary = reportsData?.report ? [
-    { label: 'Entries', value: reportsData.report.entries || 0, color: 'var(--accent-blue)' },
-    { label: 'Exits', value: reportsData.report.exits || 0, color: 'var(--accent-cyan)' },
-    { label: 'Denied', value: reportsData.report.denied || 0, color: 'var(--accent-red)' },
-    { label: 'Violations', value: reportsData.report.violations || 0, color: '#FF9800' }
-  ] : dashboardData ? [
-    { label: 'Entries', value: dashboardData.counts.entriesToday, color: 'var(--accent-blue)' },
-    { label: 'Exits', value: dashboardData.counts.exitsToday, color: 'var(--accent-cyan)' },
-    { label: 'Denied', value: dashboardData.counts.deniedToday, color: 'var(--accent-red)' },
-    { label: 'Violations', value: dashboardData.counts.violationsToday, color: '#FF9800' }
-  ] : [];
 
-  // Export functions
-  const handleExportReportsCSV = () => {
-    const headers = ['Metric', 'Value', 'Period'];
-    const period = useReportDateRange && reportStartDate && reportEndDate
-      ? `${reportStartDate} to ${reportEndDate}`
-      : reportRange.charAt(0).toUpperCase() + reportRange.slice(1);
-    const data = reportSummary.map(report => [
-      report.label,
-      report.value,
-      period
-    ]);
-    const filename = useReportDateRange && reportStartDate && reportEndDate
-      ? `gate-reports-${reportStartDate}_to_${reportEndDate}`
-      : `gate-reports-${reportRange}-${new Date().toISOString().split('T')[0]}`;
-    exportToCSV(data, filename, headers);
-  };
-
-  const handleExportReportsExcel = () => {
-    const headers = ['Metric', 'Value', 'Period'];
-    const period = useReportDateRange && reportStartDate && reportEndDate
-      ? `${reportStartDate} to ${reportEndDate}`
-      : reportRange.charAt(0).toUpperCase() + reportRange.slice(1);
-    const data = reportSummary.map(report => [
-      report.label,
-      report.value,
-      period
-    ]);
-    const filename = useReportDateRange && reportStartDate && reportEndDate
-      ? `gate-reports-${reportStartDate}_to_${reportEndDate}`
-      : `gate-reports-${reportRange}-${new Date().toISOString().split('T')[0]}`;
-    exportToExcel(data, filename, 'Reports', headers);
-  };
-
-  const handlePrintReports = () => {
-    const headers = ['Metric', 'Value', 'Period'];
-    const period = useReportDateRange && reportStartDate && reportEndDate
-      ? `${reportStartDate} to ${reportEndDate}`
-      : reportRange.charAt(0).toUpperCase() + reportRange.slice(1);
-    const data = reportSummary.map(report => [
-      report.label,
-      report.value,
-      period
-    ]);
-    const title = useReportDateRange && reportStartDate && reportEndDate
-      ? `Gate Movement Reports (${reportStartDate} to ${reportEndDate})`
-      : `Gate Movement Reports - ${period}`;
-    printData(title, data, headers);
-  };
 
   const handleExportLogsCSV = () => {
     const filteredLogs = getFilteredAccessLogs();
@@ -888,129 +769,7 @@ function AdminDashboard({ user, onLogout }) {
       return <ScheduleManagement user={user} />;
     }
 
-    if (activeSection === 'reports') {
-      return (
-        <div className="reports-section">
-          <div className="reports-header">
-            <div>
-              <h2>Gate Movement Reports</h2>
-              <p>Generate summaries of gate entries/exits across time ranges.</p>
-            </div>
-            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px' }}>
-                  <input
-                    type="checkbox"
-                    checked={useReportDateRange}
-                    onChange={(e) => {
-                      setUseReportDateRange(e.target.checked);
-                      if (!e.target.checked) {
-                        setReportStartDate('');
-                        setReportEndDate('');
-                      }
-                    }}
-                  />
-                  <Calendar size={16} />
-                  Custom Date Range
-                </label>
-                {useReportDateRange && (
-                  <>
-                    <input
-                      type="date"
-                      value={reportStartDate}
-                      onChange={(e) => setReportStartDate(e.target.value)}
-                      style={{ padding: '6px 10px', border: '1px solid #ddd', borderRadius: '4px' }}
-                    />
-                    <span>to</span>
-                    <input
-                      type="date"
-                      value={reportEndDate}
-                      onChange={(e) => setReportEndDate(e.target.value)}
-                      min={reportStartDate}
-                      style={{ padding: '6px 10px', border: '1px solid #ddd', borderRadius: '4px' }}
-                    />
-                  </>
-                )}
-                {!useReportDateRange && (
-                  <select value={reportRange} onChange={(e) => setReportRange(e.target.value)}>
-                    <option value="day">Daily</option>
-                    <option value="week">Weekly</option>
-                    <option value="month">Monthly</option>
-                  </select>
-                )}
-              </div>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button 
-                  className="outline-btn" 
-                  onClick={handleExportReportsCSV}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                  title="Export to CSV"
-                >
-                  <Download size={16} />
-                  CSV
-                </button>
-                <button 
-                  className="outline-btn" 
-                  onClick={handleExportReportsExcel}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                  title="Export to Excel"
-                >
-                  <FileSpreadsheet size={16} />
-                  Excel
-                </button>
-                <button 
-                  className="outline-btn" 
-                  onClick={handlePrintReports}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                  title="Print Report"
-                >
-                  <Printer size={16} />
-                  Print
-                </button>
-              </div>
-            </div>
-          </div>
 
-          {reportsLoading ? (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>Loading reports...</div>
-          ) : (
-            <>
-              <div className="reports-grid">
-                {reportSummary.map((report) => {
-                  const periodLabel = useReportDateRange && reportStartDate && reportEndDate
-                    ? `${reportStartDate} to ${reportEndDate}`
-                    : reportRange;
-                  return (
-                    <div key={report.label} className="report-card">
-                      <span>{report.label} ({periodLabel})</span>
-                      <strong>{report.value}</strong>
-                      <div className="report-bar">
-                        <div style={{ width: `${Math.min(report.value / 10, 100)}%`, backgroundColor: report.color }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="chart-card">
-                <div>
-                  <h3>Gate Utilization Summary</h3>
-                  <p>Distribution of entries vs exits for the selected period.</p>
-                </div>
-                <div className="mini-chart">
-                  {reportSummary.map((report) => (
-                    <div key={report.label}>
-                      <span style={{ background: report.color }} />
-                      {report.label}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      );
-    }
 
     if (activeSection === 'accessLogs') {
       // Use getFilteredAccessLogs which handles both campus-specific and additional filters
@@ -1165,54 +924,54 @@ function AdminDashboard({ user, onLogout }) {
                 {selectedCampus ? `Loading ${campusesData.find(c => c.campusId === selectedCampus)?.name} logs...` : 'Loading access logs...'}
               </div>
             ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Log ID</th>
-                      <th>User ID</th>
-                      <th>User Name</th>
-                      <th>User Type</th>
-                      <th>Action</th>
-                      <th>Gate</th>
-                      <th>Campus</th>
-                      <th>Status</th>
-                      <th>Timestamp</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredLogs.length > 0 ? (
-                      filteredLogs.map((log, index) => {
-                        // Find campus name by looking up gate's campus
-                        const gateData = gatesData.find(gate => gate.gateId === log.gateId);
-                        const campusName = gateData?.campusName || 'Unknown';
+              <table>
+                <thead>
+                  <tr>
+                    <th>Log ID</th>
+                    <th>User ID</th>
+                    <th>User Name</th>
+                    <th>User Type</th>
+                    <th>Action</th>
+                    <th>Gate</th>
+                    <th>Campus</th>
+                    <th>Status</th>
+                    <th>Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLogs.length > 0 ? (
+                    filteredLogs.map((log, index) => {
+                      // Find campus name by looking up gate's campus
+                      const gateData = gatesData.find(gate => gate.gateId === log.gateId);
+                      const campusName = gateData?.campusName || 'Unknown';
 
-                        return (
-                          <tr key={log.logId || log.id || index}>
-                            <td>{log.logId || log.id || 'N/A'}</td>
-                            <td>{log.userId || log.studentId || 'N/A'}</td>
-                            <td>{log.userName || log.studentName || 'N/A'}</td>
-                            <td>{log.userType || 'student'}</td>
-                            <td>{log.scanType === 'entry' ? 'Entry' : 'Exit'}</td>
-                            <td>{log.gateId || 'Gate'}</td>
-                            <td>{campusName}</td>
-                            <td>
-                              <span className={`tag ${log.allowed ? 'success' : 'danger'}`}>
-                                {log.allowed ? 'Approved' : 'Denied'}
-                              </span>
-                            </td>
-                            <td>{new Date(log.timestamp).toLocaleString()}</td>
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan="9" style={{ textAlign: 'center', color: '#999', padding: '40px' }}>
-                          {selectedCampus ? `No access logs found for ${campusesData.find(c => c.campusId === selectedCampus)?.name}` : 'No access logs found matching the selected filters'}
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                      return (
+                        <tr key={log.logId || log.id || index}>
+                          <td>{log.logId || log.id || 'N/A'}</td>
+                          <td>{log.userId || log.studentId || 'N/A'}</td>
+                          <td>{log.userName || log.studentName || 'N/A'}</td>
+                          <td>{log.userType || 'student'}</td>
+                          <td>{log.scanType === 'entry' ? 'Entry' : 'Exit'}</td>
+                          <td>{log.gateId || 'Gate'}</td>
+                          <td>{campusName}</td>
+                          <td>
+                            <span className={`tag ${log.allowed ? 'success' : 'danger'}`}>
+                              {log.allowed ? 'Approved' : 'Denied'}
+                            </span>
+                          </td>
+                          <td>{new Date(log.timestamp).toLocaleString()}</td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan="9" style={{ textAlign: 'center', color: '#999', padding: '40px' }}>
+                        {selectedCampus ? `No access logs found for ${campusesData.find(c => c.campusId === selectedCampus)?.name}` : 'No access logs found matching the selected filters'}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             )}
           </div>
         </div>
@@ -1644,9 +1403,6 @@ function AdminDashboard({ user, onLogout }) {
                         </td>
                           <td>
                             <div className="actions">
-                              <button className="view" title="View Gates" onClick={() => alert('View gates coming soon!')}>
-                                <Eye size={16} />
-                              </button>
                               <button className="edit" title="Edit Campus" onClick={() => handleEditCampus(campus)}>
                                 <Edit size={16} />
                               </button>
@@ -1791,7 +1547,7 @@ function AdminDashboard({ user, onLogout }) {
     <div className="admin-layout">
       <aside className="admin-sidebar">
         <div className="logo">
-          <div className="emblem">🎓</div>
+          <img src={bulsuLogo} alt="BulSU Logo" />
           <span>BulSU Gate System</span>
         </div>
         <nav>
@@ -2004,229 +1760,197 @@ function AdminDashboard({ user, onLogout }) {
         </div>
       )}
 
-      {/* Visitor Modal */}
-      {showVisitorModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            backgroundColor: 'white',
-            borderRadius: '12px',
-            padding: '24px',
-            width: '500px',
-            maxWidth: '90vw',
-            maxHeight: '90vh',
-            overflow: 'auto'
-          }}>
-            <h3 style={{ marginTop: 0, marginBottom: '20px' }}>
-              {editingVisitor ? 'Edit Visitor' : 'Create Visitor Access'}
-            </h3>
+// Visitor Modal
+{showVisitorModal && (
+  <div className="modal-overlay" onClick={() => setShowVisitorModal(false)}>
+    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+      <div className="modal-header">
+        <h3>{editingVisitor ? 'Edit Visitor' : 'Create Visitor Access'}</h3>
+        <button className="modal-close-btn" onClick={() => setShowVisitorModal(false)}>×</button>
+      </div>
+      <form onSubmit={handleVisitorFormSubmit}>
+        <div className="modal-body">
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Full Name *</label>
+            <input
+              type="text"
+              name="name"
+              required
+              value={visitorFormData.name}
+              onChange={(e) => setVisitorFormData({...visitorFormData, name: e.target.value})}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                fontSize: '14px'
+              }}
+            />
+          </div>
 
-            <form onSubmit={handleVisitorFormSubmit}>
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Full Name *</label>
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  value={visitorFormData.name}
-                  onChange={(e) => setVisitorFormData({...visitorFormData, name: e.target.value})}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '14px'
-                  }}
-                />
-              </div>
+          <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Phone Number *</label>
+              <input
+                type="tel"
+                name="contact"
+                required
+                value={visitorFormData.contact}
+                onChange={(e) => setVisitorFormData({...visitorFormData, contact: e.target.value})}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Email (Optional)</label>
+              <input
+                type="email"
+                name="email"
+                value={visitorFormData.email}
+                onChange={(e) => setVisitorFormData({...visitorFormData, email: e.target.value})}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+          </div>
 
-              <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Phone Number *</label>
-                  <input
-                    type="tel"
-                    name="contact"
-                    required
-                    value={visitorFormData.contact}
-                    onChange={(e) => setVisitorFormData({...visitorFormData, contact: e.target.value})}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Email (Optional)</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={visitorFormData.email}
-                    onChange={(e) => setVisitorFormData({...visitorFormData, email: e.target.value})}
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
-              </div>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Address *</label>
+            <textarea
+              name="address"
+              required
+              value={visitorFormData.address}
+              onChange={(e) => setVisitorFormData({...visitorFormData, address: e.target.value})}
+              placeholder="Street address, city, province, ZIP code"
+              rows={2}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                fontSize: '14px',
+                resize: 'vertical'
+              }}
+            />
+          </div>
 
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Address *</label>
-                <textarea
-                  name="address"
-                  required
-                  value={visitorFormData.address}
-                  onChange={(e) => setVisitorFormData({...visitorFormData, address: e.target.value})}
-                  placeholder="Street address, city, province, ZIP code"
-                  rows={2}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '14px',
-                    resize: 'vertical'
-                  }}
-                />
-              </div>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Campus *</label>
+            <select
+              name="campusId"
+              required
+              value={visitorFormData.campusId}
+              onChange={(e) => setVisitorFormData({...visitorFormData, campusId: e.target.value})}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                fontSize: '14px'
+              }}
+            >
+              <option value="">Select Campus</option>
+              {campusesData.map(campus => (
+                <option key={campus.campusId} value={campus.campusId}>
+                  {campus.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Campus *</label>
-                <select
-                  name="campusId"
-                  required
-                  value={visitorFormData.campusId}
-                  onChange={(e) => setVisitorFormData({...visitorFormData, campusId: e.target.value})}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '14px'
-                  }}
-                >
-                  <option value="">Select Campus</option>
-                  {campusesData.map(campus => (
-                    <option key={campus.campusId} value={campus.campusId}>
-                      {campus.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Purpose of Visit *</label>
+            <select
+              name="purpose"
+              required
+              value={visitorFormData.purpose}
+              onChange={(e) => setVisitorFormData({...visitorFormData, purpose: e.target.value})}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                fontSize: '14px'
+              }}
+            >
+              <option value="">Select Purpose</option>
+              <option value="Meeting">Meeting</option>
+              <option value="Interview">Interview</option>
+              <option value="Delivery">Delivery</option>
+              <option value="Maintenance">Maintenance</option>
+              <option value="Event">Event/Ceremony</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
 
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Purpose of Visit *</label>
-                <select
-                  name="purpose"
-                  required
-                  value={visitorFormData.purpose}
-                  onChange={(e) => setVisitorFormData({...visitorFormData, purpose: e.target.value})}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '14px'
-                  }}
-                >
-                  <option value="">Select Purpose</option>
-                  <option value="Meeting">Meeting</option>
-                  <option value="Interview">Interview</option>
-                  <option value="Delivery">Delivery</option>
-                  <option value="Maintenance">Maintenance</option>
-                  <option value="Event">Event/Ceremony</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Visiting Person/Office</label>
+            <input
+              type="text"
+              name="visitTo"
+              value={visitorFormData.visitTo}
+              onChange={(e) => setVisitorFormData({...visitorFormData, visitTo: e.target.value})}
+              placeholder="e.g., Dr. Smith, Admissions Office"
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                fontSize: '14px'
+              }}
+            />
+          </div>
 
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Visiting Person/Office</label>
-                <input
-                  type="text"
-                  name="visitTo"
-                  value={visitorFormData.visitTo}
-                  onChange={(e) => setVisitorFormData({...visitorFormData, visitTo: e.target.value})}
-                  placeholder="e.g., Dr. Smith, Admissions Office"
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '14px'
-                  }}
-                />
-              </div>
-
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Additional Notes</label>
-                <textarea
-                  name="additionalNotes"
-                  value={visitorFormData.additionalNotes}
-                  onChange={(e) => setVisitorFormData({...visitorFormData, additionalNotes: e.target.value})}
-                  placeholder="Any additional information..."
-                  rows={3}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #ddd',
-                    borderRadius: '4px',
-                    fontSize: '14px',
-                    resize: 'vertical'
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowVisitorModal(false)}
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: '#6c757d',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  style={{
-                    padding: '8px 16px',
-                    backgroundColor: '#28a745',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  {editingVisitor ? 'Update Visitor' : 'Create Visitor Pass'}
-                </button>
-              </div>
-            </form>
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Additional Notes</label>
+            <textarea
+              name="additionalNotes"
+              value={visitorFormData.additionalNotes}
+              onChange={(e) => setVisitorFormData({...visitorFormData, additionalNotes: e.target.value})}
+              placeholder="Any additional information..."
+              rows={3}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #ddd',
+                borderRadius: '4px',
+                fontSize: '14px',
+                resize: 'vertical'
+              }}
+            />
           </div>
         </div>
-      )}
+        <div className="modal-footer">
+          <button
+            type="button"
+            className="outline-btn"
+            onClick={() => setShowVisitorModal(false)}
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="primary-btn"
+          >
+            {editingVisitor ? 'Update Visitor' : 'Create Visitor Pass'}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
 
-      {/* QR Code Display Modal */}
+{/* QR Code Display Modal */}
       {generatedQR && (
         <QRDisplayModal
           qrData={generatedQR}
@@ -2385,7 +2109,22 @@ function QRDisplayModal({ qrData, onClose }) {
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <button
+            style={{
+              padding: '10px 16px',
+              backgroundColor: '#6c757d',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}
+            onClick={onClose}
+          >
+            Close
+          </button>
           <button
             style={{
               padding: '10px 16px',
@@ -2415,21 +2154,6 @@ function QRDisplayModal({ qrData, onClose }) {
             onClick={() => window.print()}
           >
             Print
-          </button>
-          <button
-            style={{
-              padding: '10px 16px',
-              backgroundColor: '#6c757d',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}
-            onClick={onClose}
-          >
-            Close
           </button>
         </div>
       </div>

@@ -3,9 +3,11 @@ const express = require('express');
 const router = express.Router();
 const {
   getAllUsers,
+  getStudentsInDepartment,
   getUsersByRole,
   createUser,
   updateUser,
+  updateOwnProfile,
   deactivateUser,
   activateUser,
   deleteUser,
@@ -33,6 +35,9 @@ router.patch('/:userId/deactivate', authenticateToken, authorizeRole('admin'), d
 // Activate user
 router.patch('/:userId/activate', authenticateToken, authorizeRole('admin'), activateUser);
 
+// Update own profile (users can update their own profile)
+router.put('/:userId/profile', authenticateToken, updateOwnProfile);
+
 // Change user password (users can change their own password, doesn't require current password for first login)
 router.patch('/:userId/change-password', authenticateToken, changeUserPassword);
 
@@ -41,5 +46,8 @@ router.patch('/:userId/reset-password', authenticateToken, authorizeRole('admin'
 
 // Delete user
 router.delete('/:userId', authenticateToken, authorizeRole('admin'), deleteUser);
+
+// Faculty routes - faculty can view students in their department
+router.get('/faculty/students-department', authenticateToken, authorizeRole('faculty'), getStudentsInDepartment);
 
 module.exports = router;

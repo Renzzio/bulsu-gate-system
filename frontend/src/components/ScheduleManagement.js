@@ -125,8 +125,10 @@ const ScheduleManagement = ({ user }) => {
 
   const handleEditSchedule = async (scheduleData) => {
     try {
+      // Use viewingStudent ID if in modal, otherwise use selectedStudent
+      const studentId = showStudentSchedules ? viewingStudent.userId : selectedStudent;
       const response = await scheduleService.updateSchedule(
-        selectedStudent,
+        studentId,
         editingSchedule.scheduleId,
         scheduleData
       );
@@ -134,7 +136,7 @@ const ScheduleManagement = ({ user }) => {
         setSuccess('Schedule updated successfully');
         setShowEditModal(false);
         setEditingSchedule(null);
-        loadSchedules(selectedStudent);
+        loadSchedules(studentId);
         setTimeout(() => setSuccess(''), 3000);
       }
     } catch (err) {
@@ -149,10 +151,12 @@ const ScheduleManagement = ({ user }) => {
     }
 
     try {
-      const response = await scheduleService.deleteSchedule(selectedStudent, scheduleId);
+      // Use viewingStudent ID if in modal, otherwise use selectedStudent
+      const studentId = showStudentSchedules ? viewingStudent.userId : selectedStudent;
+      const response = await scheduleService.deleteSchedule(studentId, scheduleId);
       if (response.success) {
         setSuccess('Schedule deleted successfully');
-        loadSchedules(selectedStudent);
+        loadSchedules(studentId);
         setTimeout(() => setSuccess(''), 3000);
       }
     } catch (err) {
@@ -364,7 +368,6 @@ const ScheduleManagement = ({ user }) => {
           left: 0,
           right: 0,
           bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.7)',
           zIndex: 2500,
           display: 'flex',
           alignItems: 'center',

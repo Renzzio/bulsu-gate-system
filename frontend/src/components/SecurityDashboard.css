@@ -31,6 +31,14 @@
   letter-spacing: 0.5px;
 }
 
+.security-sidebar .logo img {
+  margin-left: 45px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .security-sidebar .emblem {
   width: 40px;
   height: 40px;
@@ -480,6 +488,7 @@
 
 /* Action buttons */
 .primary-btn {
+  margin-top:20px;
   background: var(--bulsu-red);
   color: white;
   border: none;

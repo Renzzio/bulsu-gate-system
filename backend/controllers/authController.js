@@ -50,18 +50,33 @@ const login = async (req, res) => {
       });
     }
 
-    // Generate JWT token
-    const token = jwt.sign(
-      {
-        userId: userId,
-        role: user.role,
-        username: user.username,
-        campusId: user.campusId,
-        campusName: user.campusName || 'Unknown Campus'
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '8h' }
-    );
+    // Generate JWT token - include role-specific fields
+    const tokenPayload = {
+      userId: userId,
+      role: user.role,
+      username: user.username,
+      campusId: user.campusId,
+      campusName: user.campusName || 'Unknown Campus'
+    };
+
+    // Add faculty/staff specific fields
+    if (user.role === 'faculty' || user.role === 'staff') {
+      tokenPayload.department = user.department;
+      tokenPayload.position = user.position;
+      tokenPayload.subjects = user.subjects;
+      tokenPayload.qualifications = user.qualifications;
+    }
+
+    // Add student specific fields
+    if (user.role === 'student') {
+      tokenPayload.studentDepartment = user.studentDepartment;
+      tokenPayload.yearLevel = user.yearLevel;
+      tokenPayload.program = user.program;
+      tokenPayload.section = user.section;
+      tokenPayload.studentId = user.studentId;
+    }
+
+    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: '8h' });
 
     // Update last login
     await db.ref(`users/${userId}`).update({

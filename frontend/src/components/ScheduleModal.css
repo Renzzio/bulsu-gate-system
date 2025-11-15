@@ -57,7 +57,6 @@
 .modal-header h3 {
   margin: 0;
   font-size: var(--font-size-2xl);
-  color: var(--text-dark);
   font-weight: var(--font-weight-semibold);
 }
 

@@ -49,6 +49,118 @@ const getAllUsers = async (req, res) => {
   }
 };
 
+// Get students in faculty's department
+const getStudentsInDepartment = async (req, res) => {
+  try {
+    const facultyUser = req.user; // From auth middleware
+
+    console.log('Faculty user data:', {
+      userId: facultyUser.userId,
+      role: facultyUser.role,
+      department: facultyUser.department,
+      campusId: facultyUser.campusId
+    });
+
+    // Verify user is a faculty member
+    if (facultyUser.role !== 'faculty') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only faculty members can access this endpoint'
+      });
+    }
+
+    // Faculty must have a department assigned to view students
+    if (!facultyUser.department) {
+      console.log('Faculty user has no department assigned');
+      return res.status(400).json({
+        success: false,
+        message: 'Your account does not have a department assigned. Please contact an administrator to assign your department.'
+      });
+    }
+
+    const usersRef = db.ref('users');
+    // Get all students
+    const snapshot = await usersRef.orderByChild('role').equalTo('student').once('value');
+
+    if (!snapshot.exists()) {
+      console.log('No student users found in database');
+      return res.json({
+        success: true,
+        users: [],
+        message: 'No students found'
+      });
+    }
+
+    const students = [];
+    let totalStudents = 0;
+    let campusMatch = 0;
+    let departmentMatch = 0;
+
+    snapshot.forEach((childSnapshot) => {
+      const user = childSnapshot.val();
+      totalStudents++;
+
+      // Debug logging
+      if (user.campusId === facultyUser.campusId) {
+        campusMatch++;
+      }
+
+      // Filter by campus and department matching faculty's department
+      if (user.campusId === facultyUser.campusId && user.studentDepartment === facultyUser.department) {
+        departmentMatch++;
+        const { password, ...userWithoutPassword } = user;
+        students.push({
+          userId: childSnapshot.key,
+          ...userWithoutPassword
+        });
+      }
+    });
+
+    // Show detailed breakdown of filtering
+    const departmentBreakdown = {};
+    snapshot.forEach((childSnapshot) => {
+      const user = childSnapshot.val();
+      const dept = user.studentDepartment || 'NO_DEPT';
+      if (!departmentBreakdown[dept]) departmentBreakdown[dept] = 0;
+      departmentBreakdown[dept]++;
+    });
+
+    console.log('Advanced Students filtering results:', {
+      facultyInfo: {
+        userId: facultyUser.userId,
+        name: `${facultyUser.firstName} ${facultyUser.lastName}`,
+        department: facultyUser.department,
+        campusId: facultyUser.campusId,
+        role: facultyUser.role
+      },
+      filteringSummary: {
+        totalStudents,
+        campusMatch,
+        departmentMatch,
+        finalMatches: students.length
+      },
+      departmentBreakdown: departmentBreakdown,
+      studentsBeingReturned: students.map(s => ({
+        userId: s.userId,
+        name: `${s.firstName} ${s.lastName}`,
+        department: s.studentDepartment || 'NO_DEPT'
+      }))
+    });
+
+    res.json({
+      success: true,
+      users: students,
+      message: `${students.length} students found in your ${facultyUser.department} department`
+    });
+  } catch (error) {
+    console.error('Get students in department error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while fetching students'
+    });
+  }
+};
+
 // Get users by role
 const getUsersByRole = async (req, res) => {
   try {
@@ -412,8 +524,12 @@ const changeUserPassword = async (req, res) => {
     const { userId } = req.params;
     const { currentPassword, newPassword, confirmPassword } = req.body;
 
+    console.log(`Password change request for userId: ${userId}`);
+    console.log(`Requesting user:`, { id: req.user?.userId, role: req.user?.role });
+
     // Validation
     if (!newPassword || !confirmPassword) {
+      console.log('Validation failed: missing new password or confirmation');
       return res.status(400).json({
         success: false,
         message: 'New password and confirmation are required'
@@ -421,6 +537,7 @@ const changeUserPassword = async (req, res) => {
     }
 
     if (newPassword !== confirmPassword) {
+      console.log('Validation failed: passwords do not match');
       return res.status(400).json({
         success: false,
         message: 'New password and confirmation do not match'
@@ -428,9 +545,130 @@ const changeUserPassword = async (req, res) => {
     }
 
     if (newPassword.length < 6) {
+      console.log('Validation failed: password too short');
       return res.status(400).json({
         success: false,
         message: 'Password must be at least 6 characters long'
+      });
+    }
+
+    // Check if user exists
+    const userRef = db.ref(`users/${userId}`);
+    const snapshot = await userRef.once('value');
+
+    if (!snapshot.exists()) {
+      console.log(`User not found: ${userId}`);
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    const userData = snapshot.val();
+    console.log(`User found:`, {
+      userId: userData.userID || userData.username,
+      firstTimeLogin: userData.firstTimeLogin,
+      hasPassword: !!userData.password
+    });
+
+    // Check if user is trying to change their own password
+    if (req.user.userId !== userId) {
+      console.log(`Authorization failed: user ${req.user.userId} trying to change password for ${userId}`);
+      return res.status(403).json({
+        success: false,
+        message: 'You can only change your own password'
+      });
+    }
+
+    // For faculty users who have already logged in (firstTimeLogin is false), require current password
+    // For first-time login (firstTimeLogin is true), don't require current password
+    if (!userData.firstTimeLogin && currentPassword) {
+      console.log('Verifying current password for established user...');
+      const { comparePassword } = require('../utils/passwordUtils');
+      const isCurrentPasswordValid = await comparePassword(currentPassword, userData.password);
+
+      console.log(`Password verification result:`, isCurrentPasswordValid);
+
+      if (!isCurrentPasswordValid) {
+        console.log('Current password verification failed');
+        return res.status(400).json({
+          success: false,
+          message: 'Current password is incorrect'
+        });
+      }
+    } else if (!userData.firstTimeLogin && !currentPassword) {
+      console.log('Current password required for established user but not provided');
+      return res.status(400).json({
+        success: false,
+        message: 'Current password is required for password changes'
+      });
+    } else {
+      console.log('Skipping current password verification (first-time login or password reset)');
+    }
+
+    // Hash new password
+    console.log('Hashing new password...');
+    const hashedNewPassword = await hashPassword(newPassword);
+
+    // Update password and clear firstTimeLogin flag
+    const updateData = {
+      password: hashedNewPassword,
+      firstTimeLogin: false, // Clear forced password change flag
+      passwordChangedAt: new Date().toISOString()
+    };
+
+    console.log('Updating user password in database...');
+    await userRef.update(updateData);
+
+    console.log('Password change successful');
+    res.json({
+      success: true,
+      message: 'Password changed successfully'
+    });
+  } catch (error) {
+    console.error('Change password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while changing password'
+    });
+  }
+};
+
+// Update own profile (not requiring admin role)
+const updateOwnProfile = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const requestingUser = req.user; // From auth middleware
+
+    // Only allow users to update their own profile
+    if (requestingUser.userId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'You can only update your own profile'
+      });
+    }
+
+    const { firstName, lastName, email } = req.body;
+
+    // Validation - only allow updating certain fields
+    if (firstName !== undefined && (!firstName || firstName.trim() === '')) {
+      return res.status(400).json({
+        success: false,
+        message: 'First name cannot be empty'
+      });
+    }
+
+    if (lastName !== undefined && (!lastName || lastName.trim() === '')) {
+      return res.status(400).json({
+        success: false,
+        message: 'Last name cannot be empty'
+      });
+    }
+
+    if (email !== undefined && (!email || email.trim() === '' || !email.includes('@'))) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address'
       });
     }
 
@@ -445,42 +683,50 @@ const changeUserPassword = async (req, res) => {
       });
     }
 
-    const userData = snapshot.val();
-
-    // If currentPassword is provided, verify it (for non-first-time logins)
-    if (currentPassword) {
-      const { comparePassword } = require('../utils/passwordUtils');
-      const isCurrentPasswordValid = await comparePassword(currentPassword, userData.password);
-
-      if (!isCurrentPasswordValid) {
-        return res.status(400).json({
-          success: false,
-          message: 'Current password is incorrect'
-        });
+    // Check if email already exists (if changing email)
+    if (email !== undefined) {
+      const currentUser = snapshot.val();
+      if (email !== currentUser.email) {
+        const usersRef = db.ref('users');
+        const emailSnapshot = await usersRef.orderByChild('email').equalTo(email).once('value');
+        if (emailSnapshot.exists()) {
+          return res.status(400).json({
+            success: false,
+            message: 'Email already exists'
+          });
+        }
       }
     }
 
-    // Hash new password
-    const hashedNewPassword = await hashPassword(newPassword);
+    // Build update object with only allowed fields
+    const updateData = {};
+    if (firstName !== undefined) updateData.firstName = firstName.trim();
+    if (lastName !== undefined) updateData.lastName = lastName.trim();
+    if (email !== undefined) updateData.email = email.trim().toLowerCase();
 
-    // Update password and clear firstTimeLogin flag
-    const updateData = {
-      password: hashedNewPassword,
-      firstTimeLogin: false, // Clear forced password change flag
-      passwordChangedAt: new Date().toISOString()
-    };
+    updateData.updatedAt = new Date().toISOString();
 
+    // Update user
     await userRef.update(updateData);
+
+    // Fetch updated user
+    const updatedSnapshot = await userRef.once('value');
+    const updatedUser = updatedSnapshot.val();
+    const { password, ...userWithoutPassword } = updatedUser;
 
     res.json({
       success: true,
-      message: 'Password changed successfully'
+      message: 'Profile updated successfully',
+      user: {
+        userId,
+        ...userWithoutPassword
+      }
     });
   } catch (error) {
-    console.error('Change password error:', error);
+    console.error('Update own profile error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error while changing password'
+      message: 'Server error while updating profile'
     });
   }
 };
@@ -527,9 +773,11 @@ const resetUserPassword = async (req, res) => {
 
 module.exports = {
   getAllUsers,
+  getStudentsInDepartment,
   getUsersByRole,
   createUser,
   updateUser,
+  updateOwnProfile,
   deactivateUser,
   activateUser,
   deleteUser,

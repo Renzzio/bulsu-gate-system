@@ -2,26 +2,516 @@ import React, { useState, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import GateControlInterface from './GateControlInterface';
 import visitorService from '../services/visitorService';
-import authService from '../services/authService';
-import { QrCode, UserPlus, LogOut, Shield, UserCheck, Users, AlertTriangle, Clock } from 'lucide-react';
+import authService, { updateOwnProfile, changePassword } from '../services/authService';
+import { QrCode, UserPlus, LogOut, Shield, UserCheck, Users, AlertTriangle, Clock, User, Eye, EyeOff, Edit, Check, X } from 'lucide-react';
+import bulsuLogo from '../bulsuLogo.png';
 import './SecurityDashboard.css';
 
 const sidebarItems = [
   { id: 'scanner', label: 'Gate Scanner', icon: QrCode },
   { id: 'visitors', label: 'Visitor Management', icon: UserPlus },
+  { id: 'profile', label: 'My Profile', icon: User },
 ];
 
 function SecurityDashboard({ user, onLogout }) {
   const [activeSection, setActiveSection] = useState('scanner');
 
+  // Profile management states
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isEditingPassword, setIsEditingPassword] = useState(false);
+  const [profileFormData, setProfileFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: ''
+  });
+  const [passwordFormData, setPasswordFormData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  // Password visibility toggles
+  const [showPasswords, setShowPasswords] = useState({
+    current: false,
+    new: false,
+    confirm: false
+  });
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileMessage, setProfileMessage] = useState('');
+
   const initials = `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase();
+
+  // Initialize profile form data when user object becomes available
+  useEffect(() => {
+    if (user && !isEditingProfile) {
+      setProfileFormData({
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
+        email: user.email || ''
+      });
+    }
+  }, [user, isEditingProfile]);
 
   const renderSection = () => {
     if (activeSection === 'visitors') {
       return <VisitorManagement user={user} />;
     }
 
+    if (activeSection === 'profile') {
+      return renderProfileSection();
+    }
+
     return <GateControlInterface user={user} onLogout={onLogout} />;
+  };
+
+  // Profile management functions
+  const handleProfileUpdate = async (e) => {
+    e.preventDefault();
+    setProfileLoading(true);
+    setProfileMessage('');
+
+    try {
+      const response = await updateOwnProfile(user.userId, profileFormData);
+      if (response.success) {
+        setProfileMessage('Profile updated successfully!');
+        setIsEditingProfile(false);
+        // Optionally update the parent user state if needed
+        window.location.reload(); // Simple way to refresh and get updated user data
+      } else {
+        setProfileMessage(response.message || 'Failed to update profile');
+      }
+    } catch (error) {
+      setProfileMessage(error.message || 'Error updating profile. Please try again.');
+      console.error('Profile update error:', error);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async (e) => {
+    e.preventDefault();
+    setProfileLoading(true);
+    setProfileMessage('');
+
+    if (passwordFormData.newPassword !== passwordFormData.confirmPassword) {
+      setProfileMessage('New password and confirmation do not match');
+      setProfileLoading(false);
+      return;
+    }
+
+    try {
+      const response = await changePassword(user.userId, {
+        currentPassword: passwordFormData.currentPassword,
+        newPassword: passwordFormData.newPassword,
+        confirmPassword: passwordFormData.confirmPassword
+      });
+      if (response.success) {
+        setProfileMessage('Password changed successfully!');
+        setIsEditingPassword(false);
+        setPasswordFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      } else {
+        setProfileMessage(response.message || 'Failed to change password');
+      }
+    } catch (error) {
+      setProfileMessage(error.message || 'Error changing password. Please try again.');
+      console.error('Password change error:', error);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  // Password visibility toggle functions
+  const togglePasswordVisibility = (field) => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [field]: !prev[field]
+    }));
+  };
+
+  const cancelEdit = () => {
+    setIsEditingProfile(false);
+    setIsEditingPassword(false);
+    setProfileFormData({
+      firstName: user?.firstName || '',
+      lastName: user?.lastName || '',
+      email: user?.email || ''
+    });
+    setPasswordFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    setShowPasswords({ current: false, new: false, confirm: false });
+    setProfileMessage('');
+  };
+
+  const renderProfileSection = () => {
+    return (
+      <div className="profile-section">
+        <div className="welcome-card">
+          <h2><User size={18} /> My Profile</h2>
+          <p>
+            Manage your personal information and account settings.
+          </p>
+        </div>
+
+        {/* Profile Information Display */}
+        <div style={{ background: 'white', borderRadius: '8px', padding: '2rem', marginBottom: '2rem', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <h3 style={{ margin: 0 }}>Profile Information</h3>
+            {!isEditingProfile && (
+              <button
+                onClick={() => setIsEditingProfile(true)}
+                style={{
+                  backgroundColor: '#667eea',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <Edit size={16} />
+                Edit Profile
+              </button>
+            )}
+          </div>
+
+          {profileMessage && (
+            <div style={{
+              padding: '12px',
+              marginBottom: '1rem',
+              borderRadius: '6px',
+              backgroundColor: profileMessage.includes('success') ? '#d4edda' : '#f8d7da',
+              color: profileMessage.includes('success') ? '#155724' : '#721c24',
+              border: `1px solid ${profileMessage.includes('success') ? '#c3e6cb' : '#f5c6cb'}`
+            }}>
+              {profileMessage}
+            </div>
+          )}
+
+          <form onSubmit={handleProfileUpdate}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>First Name</label>
+                {isEditingProfile ? (
+                  <input
+                    type="text"
+                    value={profileFormData.firstName}
+                    onChange={(e) => setProfileFormData({...profileFormData, firstName: e.target.value})}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '14px'
+                    }}
+                  />
+                ) : (
+                  <div style={{ padding: '8px 12px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#f8f9fa' }}>
+                    {user.firstName}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Last Name</label>
+                {isEditingProfile ? (
+                  <input
+                    type="text"
+                    value={profileFormData.lastName}
+                    onChange={(e) => setProfileFormData({...profileFormData, lastName: e.target.value})}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '14px'
+                    }}
+                  />
+                ) : (
+                  <div style={{ padding: '8px 12px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#f8f9fa' }}>
+                    {user.lastName}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Email</label>
+                {isEditingProfile ? (
+                  <input
+                    type="email"
+                    value={profileFormData.email}
+                    onChange={(e) => setProfileFormData({...profileFormData, email: e.target.value})}
+                    required
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '4px',
+                      fontSize: '14px'
+                    }}
+                  />
+                ) : (
+                  <div style={{ padding: '8px 12px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#f8f9fa' }}>
+                    {user.email}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Campus</label>
+                <div style={{ padding: '8px 12px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#f8f9fa' }}>
+                  {user.campusId}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Role</label>
+                <div style={{ padding: '8px 12px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#f8f9fa' }}>
+                  {user.role?.toUpperCase()}
+                </div>
+              </div>
+            </div>
+
+            {isEditingProfile && (
+              <div style={{ marginTop: '2rem', display: 'flex', gap: '12px' }}>
+                <button
+                  type="submit"
+                  disabled={profileLoading}
+                  style={{
+                    backgroundColor: '#28a745',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '6px',
+                    cursor: profileLoading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <Check size={16} />
+                  {profileLoading ? 'Saving...' : 'Save Changes'}
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  disabled={profileLoading}
+                  style={{
+                    backgroundColor: '#6c757d',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '6px',
+                    cursor: profileLoading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <X size={16} />
+                  Cancel
+                </button>
+              </div>
+            )}
+          </form>
+        </div>
+
+        {/* Password Change Section */}
+        <div style={{ background: 'white', borderRadius: '8px', padding: '2rem', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+            <h3 style={{ margin: 0 }}>Change Password</h3>
+            {!isEditingPassword && (
+              <button
+                onClick={() => setIsEditingPassword(true)}
+                style={{
+                  backgroundColor: '#fd7e14',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+              >
+                <Edit size={16} />
+                Change Password
+              </button>
+            )}
+          </div>
+
+          <form onSubmit={handlePasswordChange}>
+            {isEditingPassword && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Current Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showPasswords.current ? 'text' : 'password'}
+                      value={passwordFormData.currentPassword}
+                      onChange={(e) => setPasswordFormData({...passwordFormData, currentPassword: e.target.value})}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '8px 40px 8px 12px',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        fontSize: '14px'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility('current')}
+                      style={{
+                        position: 'absolute',
+                        right: '8px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        color: '#666',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {showPasswords.current ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>New Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showPasswords.new ? 'text' : 'password'}
+                      value={passwordFormData.newPassword}
+                      onChange={(e) => setPasswordFormData({...passwordFormData, newPassword: e.target.value})}
+                      required
+                      minLength={6}
+                      style={{
+                        width: '100%',
+                        padding: '8px 40px 8px 12px',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        fontSize: '14px'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility('new')}
+                      style={{
+                        position: 'absolute',
+                        right: '8px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        color: '#666',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {showPasswords.new ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Confirm New Password</label>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showPasswords.confirm ? 'text' : 'password'}
+                      value={passwordFormData.confirmPassword}
+                      onChange={(e) => setPasswordFormData({...passwordFormData, confirmPassword: e.target.value})}
+                      required
+                      minLength={6}
+                      style={{
+                        width: '100%',
+                        padding: '8px 40px 8px 12px',
+                        border: '1px solid #ddd',
+                        borderRadius: '4px',
+                        fontSize: '14px'
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => togglePasswordVisibility('confirm')}
+                      style={{
+                        position: 'absolute',
+                        right: '8px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        padding: '4px',
+                        color: '#666',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      }}
+                    >
+                      {showPasswords.confirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {isEditingPassword && (
+              <div style={{ marginTop: '2rem', display: 'flex', gap: '12px' }}>
+                <button
+                  type="submit"
+                  disabled={profileLoading}
+                  style={{
+                    backgroundColor: '#28a745',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '6px',
+                    cursor: profileLoading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <Check size={16} />
+                  {profileLoading ? 'Changing...' : 'Change Password'}
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  disabled={profileLoading}
+                  style={{
+                    backgroundColor: '#6c757d',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '6px',
+                    cursor: profileLoading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <X size={16} />
+                  Cancel
+                </button>
+              </div>
+            )}
+          </form>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -29,7 +519,7 @@ function SecurityDashboard({ user, onLogout }) {
       <div className="security-layout">
         <aside className="security-sidebar">
           <div className="logo">
-            <div className="emblem">🎓</div>
+            <img src={bulsuLogo} alt="BulSU Logo" />
             <span>BulSU Gate</span>
           </div>
           <nav className="security-nav">

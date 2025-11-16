@@ -1,14 +1,20 @@
-// backend/config/firebase.js
+// backend/config/firebase.js (NEW VERSION)
 const admin = require('firebase-admin');
 
-// Replace this path with your actual Firebase service account key file
-const serviceAccount = require('./serviceAccountKey.json');
+// Import your downloaded service account key
+const serviceAccount = require('./serviceAccountKey.json'); // Make sure path is correct
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://webappprojectfirebase-default-rtdb.firebaseio.com/' // Replace with your Firebase project URL
-});
+// Your database URL from the Firebase console
+const DATABASE_URL = "https://webappprojectfirebase-default-rtdb.firebaseio.com/"; // !!! REPLACE THIS with your database URL
+
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: DATABASE_URL
+  });
+}
 
 const db = admin.database();
 
-module.exports = { admin, db };
+// Export both 'db' (for Realtime Database) and 'admin' (for Messaging)
+module.exports = { db, admin };

@@ -1,0 +1,188 @@
+/* frontend/src/components/ScheduleTable.css */
+
+.schedule-table-container {
+  overflow-x: auto;
+  padding: var(--spacing-xl);
+}
+
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-base);
+}
+
+.schedule-table thead {
+  background-color: var(--bulsu-gray);
+  border-bottom: 2px solid var(--card-border);
+}
+
+.schedule-table th {
+  padding: var(--spacing-lg);
+  text-align: left;
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-dark);
+}
+
+.schedule-table tbody tr {
+  border-bottom: 1px solid var(--card-border);
+  transition: background-color 0.2s ease;
+}
+
+.schedule-table tbody tr:hover {
+  background-color: var(--bg-light);
+}
+
+.schedule-table td {
+  padding: var(--spacing-lg);
+  color: var(--text-muted);
+}
+
+/* Specific column styles */
+.subject-code {
+  font-weight: var(--font-weight-semibold);
+  color: var(--bulsu-red);
+  min-width: 100px;
+}
+
+.subject-name {
+  min-width: 150px;
+  color: var(--text-dark);
+}
+
+.day-cell {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+  min-width: 110px;
+}
+
+.time-cell {
+  min-width: 120px;
+  color: var(--text-muted);
+  font-family: 'Courier New', monospace;
+}
+
+.room-cell {
+  min-width: 80px;
+  color: var(--text-muted);
+}
+
+.instructor-cell {
+  min-width: 140px;
+  color: var(--text-muted);
+}
+
+.section-cell {
+  min-width: 70px;
+  color: var(--text-muted);
+}
+
+.actions-cell {
+  min-width: 100px;
+  text-align: center;
+  padding: var(--spacing-lg) var(--spacing-sm);
+}
+
+/* Action buttons */
+.action-btn {
+  background: none;
+  border: none;
+  font-size: var(--font-size-lg);
+  cursor: pointer;
+  padding: var(--spacing-sm);
+  margin: 0 var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+  display: inline-block;
+  color: var(--text-muted);
+}
+
+.edit-btn:hover {
+  background-color: rgba(0, 102, 255, 0.1);
+  color: var(--accent-blue);
+  transform: scale(1.1);
+}
+
+.delete-btn:hover {
+  background-color: rgba(255, 82, 82, 0.1);
+  color: var(--accent-red);
+  transform: scale(1.1);
+}
+
+.action-btn:active {
+  transform: scale(0.95);
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .schedule-table {
+    font-size: 13px;
+  }
+
+  .schedule-table th,
+  .schedule-table td {
+    padding: 12px;
+  }
+
+  .subject-name {
+    min-width: 120px;
+  }
+
+  .instructor-cell {
+    min-width: 100px;
+  }
+}
+
+@media (max-width: 768px) {
+  .schedule-table-container {
+    padding: 10px;
+  }
+
+  .schedule-table {
+    font-size: 12px;
+  }
+
+  .schedule-table th,
+  .schedule-table td {
+    padding: 10px 8px;
+  }
+
+  .subject-code {
+    min-width: 80px;
+  }
+
+  .subject-name {
+    min-width: 100px;
+  }
+
+  .day-cell {
+    min-width: 80px;
+  }
+
+  .time-cell {
+    min-width: 100px;
+    font-size: 12px;
+  }
+
+  .room-cell {
+    min-width: 60px;
+  }
+
+  .instructor-cell {
+    min-width: 80px;
+  }
+
+  .section-cell {
+    display: none;
+  }
+
+  .actions-cell {
+    min-width: 70px;
+    padding: 10px 4px;
+  }
+
+  .action-btn {
+    font-size: 16px;
+    padding: 4px 6px;
+    margin: 0 2px;
+  }
+}

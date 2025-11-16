@@ -1,0 +1,270 @@
+/* frontend/src/components/ScheduleExcelUpload.css */
+
+.excel-upload-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xl);
+  padding: var(--spacing-xl);
+  background-color: var(--bg-white);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+}
+
+.student-select-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.student-select-panel label {
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-dark);
+}
+
+.student-select-panel select {
+  padding: var(--spacing-md);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.student-select-panel select:focus {
+  outline: none;
+  border-color: var(--bulsu-red);
+  box-shadow: 0 0 0 3px rgba(196, 30, 58, 0.1);
+}
+
+.upload-box {
+  position: relative;
+  border: 2px dashed var(--accent-blue);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-3xl) var(--spacing-xl);
+  background-color: rgba(0, 102, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.upload-box:hover {
+  border-color: var(--bulsu-red);
+  background-color: rgba(196, 30, 58, 0.05);
+}
+
+.upload-box.drag-over {
+  border-color: var(--accent-cyan);
+  background-color: rgba(0, 188, 212, 0.08);
+  box-shadow: 0 0 0 3px rgba(0, 188, 212, 0.1);
+}
+
+.file-input {
+  display: none;
+}
+
+.upload-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.upload-icon {
+  font-size: var(--font-size-5xl);
+  margin-bottom: var(--spacing-md);
+}
+
+.upload-content h3 {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+  color: var(--text-dark);
+  font-weight: var(--font-weight-semibold);
+}
+
+.upload-content p {
+  margin: var(--spacing-sm) 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-base);
+}
+
+.file-info {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm) !important;
+  margin-top: var(--spacing-md) !important;
+}
+
+.upload-buttons {
+  display: flex;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: var(--spacing-md) var(--spacing-xl);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-primary {
+  background-color: var(--bulsu-red);
+  color: white;
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--bulsu-dark-red);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-secondary {
+  background-color: var(--bulsu-gray);
+  color: var(--text-dark);
+  border: 1px solid var(--card-border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: var(--bg-light);
+  border-color: var(--text-muted);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Upload Status */
+.upload-status {
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  display: flex;
+  gap: var(--spacing-md);
+  animation: slideIn 0.3s ease;
+}
+
+.upload-status.success {
+  background-color: rgba(0, 188, 212, 0.1);
+  color: var(--accent-cyan);
+  border-left: 4px solid var(--accent-cyan);
+}
+
+.upload-status.error {
+  background-color: rgba(255, 82, 82, 0.1);
+  color: var(--accent-red);
+  border-left: 4px solid var(--accent-red);
+}
+
+.status-icon {
+  font-size: var(--font-size-2xl);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.status-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.status-message {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-base);
+}
+
+.status-details {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  margin-top: var(--spacing-md);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid currentColor;
+  opacity: 0.9;
+}
+
+.detail-item {
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.detail-item.failed {
+  color: var(--accent-red);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Instructions */
+.excel-instructions {
+  background-color: rgba(0, 102, 255, 0.05);
+  padding: var(--spacing-lg);
+  border-radius: var(--radius-md);
+  border-left: 4px solid var(--accent-blue);
+}
+
+.excel-instructions h4 {
+  margin: 0 0 var(--spacing-md) 0;
+  font-size: var(--font-size-base);
+  color: var(--text-dark);
+  font-weight: var(--font-weight-semibold);
+}
+
+.excel-instructions ul {
+  margin: 0;
+  padding-left: var(--spacing-xl);
+  list-style-position: inside;
+}
+
+.excel-instructions li {
+  margin: var(--spacing-md) 0;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+.excel-instructions strong {
+  color: var(--accent-blue);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .excel-upload-container {
+    padding: 15px;
+    gap: 15px;
+  }
+
+  .upload-box {
+    padding: 30px 15px;
+  }
+
+  .upload-icon {
+    font-size: 40px;
+  }
+
+  .upload-content h3 {
+    font-size: 18px;
+  }
+
+  .upload-buttons {
+    flex-direction: column;
+  }
+
+  .btn {
+    width: 100%;
+  }
+
+  .excel-instructions {
+    padding: 12px;
+  }
+
+  .excel-instructions li {
+    font-size: 12px;
+  }
+}

@@ -167,11 +167,11 @@ const getUsersByRole = async (req, res) => {
     const { role } = req.params;
 
     // Validate role
-    const validRoles = ['admin', 'faculty', 'staff', 'guard', 'vip', 'student'];
+    const validRoles = ['admin', 'faculty', 'staff', 'guard', 'student'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid role. Valid roles: admin, faculty, staff, guard, vip, student'
+        message: 'Invalid role. Valid roles: admin, faculty, staff, guard, student'
       });
     }
 
@@ -229,11 +229,11 @@ const createUser = async (req, res) => {
     }
 
     // Validate role
-    const validRoles = ['admin', 'faculty', 'staff', 'guard', 'vip', 'student'];
+    const validRoles = ['admin', 'faculty', 'staff', 'guard', 'student'];
     if (!validRoles.includes(role)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid role. Valid roles: admin, faculty, staff, guard, vip, student'
+        message: 'Invalid role. Valid roles: admin, faculty, staff, guard, student'
       });
     }
 
@@ -369,11 +369,11 @@ const updateUser = async (req, res) => {
 
     // Role and status validation
     if (role !== undefined) {
-      const validRoles = ['admin', 'faculty', 'staff', 'guard', 'vip', 'student'];
+      const validRoles = ['admin', 'faculty', 'staff', 'guard', 'student'];
       if (!validRoles.includes(role)) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid role'
+          message: 'Invalid role. Valid roles: admin, faculty, staff, guard, student'
         });
       }
       updateData.role = role;

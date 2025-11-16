@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { getStudentsInFacultyDepartment, updateOwnProfile, changePassword } from '../services/authService';
 import scheduleService from '../services/scheduleService';
+import { getCampusById } from '../services/campusService';
 import { Users, Calendar, LogOut, Eye, Clock, School, Search, Filter, User, Check, X, Edit, EyeOff } from 'lucide-react';
 import bulsuLogo from '../bulsuLogo.png';
 import './FacultyDashboard.css';
@@ -35,7 +36,8 @@ function FacultyDashboard({ user, onLogout }) {
   const [profileFormData, setProfileFormData] = useState({
     firstName: '',
     lastName: '',
-    email: ''
+    email: '',
+    phoneNumber: ''
   });
   const [passwordFormData, setPasswordFormData] = useState({
     currentPassword: '',
@@ -50,6 +52,7 @@ function FacultyDashboard({ user, onLogout }) {
   });
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileMessage, setProfileMessage] = useState('');
+  const [userCampusName, setUserCampusName] = useState('');
 
   useEffect(() => {
     if (activeSection === 'students') {
@@ -63,10 +66,35 @@ function FacultyDashboard({ user, onLogout }) {
       setProfileFormData({
         firstName: user.firstName || '',
         lastName: user.lastName || '',
-        email: user.email || ''
+        email: user.email || '',
+        phoneNumber: user.phoneNumber || ''
       });
     }
   }, [user, isEditingProfile]);
+
+  // Fetch campus name when user is available
+  useEffect(() => {
+    if (user && user.campusId) {
+      const fetchCampusName = async () => {
+        try {
+          const response = await getCampusById(user.campusId);
+          console.log('Campus API response:', response);
+          if (response.success && response.campus) {
+            console.log('Campus data:', response.campus);
+            console.log('Campus name:', response.campus.name);
+            setUserCampusName(response.campus.name);
+          } else {
+            console.log('Failed to get campus data, response:', response);
+          }
+        } catch (error) {
+          console.error('Error fetching campus name:', error);
+          setUserCampusName(user.campusId); // Fallback to campusId
+        }
+      };
+
+      fetchCampusName();
+    }
+  }, [user]);
 
   const loadStudentsInDepartment = async () => {
     try {
@@ -274,7 +302,8 @@ function FacultyDashboard({ user, onLogout }) {
     setProfileFormData({
       firstName: user?.firstName || '',
       lastName: user?.lastName || '',
-      email: user?.email || ''
+      email: user?.email || '',
+      phoneNumber: user?.phoneNumber || ''
     });
     setPasswordFormData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     setShowPasswords({ current: false, new: false, confirm: false });
@@ -284,15 +313,9 @@ function FacultyDashboard({ user, onLogout }) {
   const renderProfileSection = () => {
     return (
       <div className="profile-section">
-        <div className="welcome-card">
-          <h2><User size={18} /> My Profile</h2>
-          <p>
-            Manage your personal information and account settings.
-          </p>
-        </div>
 
         {/* Profile Information Display */}
-        <div style={{ background: 'white', borderRadius: '8px', padding: '2rem', marginBottom: '2rem', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <div style={{ background: 'white', borderRadius: '8px', padding: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
             <h3 style={{ margin: 0 }}>Profile Information</h3>
             {!isEditingProfile && (
@@ -323,125 +346,217 @@ function FacultyDashboard({ user, onLogout }) {
               borderRadius: '6px',
               backgroundColor: profileMessage.includes('success') ? '#d4edda' : '#f8d7da',
               color: profileMessage.includes('success') ? '#155724' : '#721c24',
-              border: `1px solid ${profileMessage.includes('success') ? '#c3e6cb' : '#f1b0b7'}`
+              border: `1px solid ${profileMessage.includes('success') ? '#c3e6cb' : '#f5c6cb'}`
             }}>
               {profileMessage}
             </div>
           )}
 
           <form onSubmit={handleProfileUpdate}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>First Name</label>
-                {isEditingProfile ? (
-                  <input
-                    type="text"
-                    value={profileFormData.firstName}
-                    onChange={(e) => setProfileFormData({...profileFormData, firstName: e.target.value})}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      fontSize: '14px'
-                    }}
-                  />
-                ) : (
-                  <div style={{ padding: '8px 12px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#f8f9fa' }}>
-                    {user.firstName}
-                  </div>
-                )}
-              </div>
+            {/* Responsive Grid Layout */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+              {/* Name Fields Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#374151', fontSize: '14px' }}>
+                    First Name <span style={{ color: 'var(--bulsu-red)', fontSize: '12px' }}>*</span>
+                  </label>
+                  {isEditingProfile ? (
+                    <input
+                      type="text"
+                      value={profileFormData.firstName}
+                      onChange={(e) => setProfileFormData({...profileFormData, firstName: e.target.value})}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        backgroundColor: 'white',
+                        transition: 'border-color 0.2s ease'
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      padding: '12px 16px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      backgroundColor: '#f9fafb',
+                      fontSize: '14px',
+                      color: '#6b7280'
+                    }}>
+                      {user.firstName}
+                    </div>
+                  )}
+                </div>
 
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Last Name</label>
-                {isEditingProfile ? (
-                  <input
-                    type="text"
-                    value={profileFormData.lastName}
-                    onChange={(e) => setProfileFormData({...profileFormData, lastName: e.target.value})}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      fontSize: '14px'
-                    }}
-                  />
-                ) : (
-                  <div style={{ padding: '8px 12px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#f8f9fa' }}>
-                    {user.lastName}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Email</label>
-                {isEditingProfile ? (
-                  <input
-                    type="email"
-                    value={profileFormData.email}
-                    onChange={(e) => setProfileFormData({...profileFormData, email: e.target.value})}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      fontSize: '14px'
-                    }}
-                  />
-                ) : (
-                  <div style={{ padding: '8px 12px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#f8f9fa' }}>
-                    {user.email}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Department</label>
-                <div style={{ padding: '8px 12px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#f8f9fa' }}>
-                  {user.department}
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#374151', fontSize: '14px' }}>
+                    Last Name <span style={{ color: 'var(--bulsu-red)', fontSize: '12px' }}>*</span>
+                  </label>
+                  {isEditingProfile ? (
+                    <input
+                      type="text"
+                      value={profileFormData.lastName}
+                      onChange={(e) => setProfileFormData({...profileFormData, lastName: e.target.value})}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        backgroundColor: 'white',
+                        transition: 'border-color 0.2s ease'
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      padding: '12px 16px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      backgroundColor: '#f9fafb',
+                      fontSize: '14px',
+                      color: '#6b7280'
+                    }}>
+                      {user.lastName}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Campus</label>
-                <div style={{ padding: '8px 12px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#f8f9fa' }}>
-                  {user.campusId}
+              {/* Email and Phone Fields Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#374151', fontSize: '14px' }}>
+                    Email Address <span style={{ color: 'var(--bulsu-red)', fontSize: '12px' }}>*</span>
+                  </label>
+                  {isEditingProfile ? (
+                    <input
+                      type="email"
+                      value={profileFormData.email}
+                      onChange={(e) => setProfileFormData({...profileFormData, email: e.target.value})}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        backgroundColor: 'white',
+                        transition: 'border-color 0.2s ease'
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      padding: '12px 16px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      backgroundColor: '#f9fafb',
+                      fontSize: '14px',
+                      color: '#6b7280',
+                      wordBreak: 'break-all'
+                    }}>
+                      {user.email}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#374151', fontSize: '14px' }}>
+                    Phone Number
+                  </label>
+                  {isEditingProfile ? (
+                    <input
+                      type="tel"
+                      value={profileFormData.phoneNumber}
+                      onChange={(e) => setProfileFormData({...profileFormData, phoneNumber: e.target.value})}
+                      placeholder="Enter phone number"
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        backgroundColor: 'white',
+                        transition: 'border-color 0.2s ease'
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      padding: '12px 16px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      backgroundColor: '#f9fafb',
+                      fontSize: '14px',
+                      color: '#6b7280'
+                    }}>
+                      {user.phoneNumber || 'Not specified'}
+                    </div>
+                  )}
                 </div>
               </div>
 
+              {/* Department and Campus Fields Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#374151', fontSize: '14px' }}>Department</label>
+                  <div style={{
+                    padding: '12px 16px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                    fontSize: '14px',
+                    color: '#6b7280',
+                    fontWeight: '500'
+                  }}>
+                    {user.department}
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#374151', fontSize: '14px' }}>Campus</label>
+                  <div style={{
+                    padding: '12px 16px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                    fontSize: '14px',
+                    color: '#6b7280',
+                    fontWeight: '500'
+                  }}>
+                    {userCampusName || user.campusId}
+                  </div>
+                </div>
+              </div>
+
+              {/* Role Field */}
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Role</label>
-                <div style={{ padding: '8px 12px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#f8f9fa' }}>
+                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#374151', fontSize: '14px' }}>Role</label>
+                <div style={{
+                  padding: '12px 16px',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(196, 30, 58, 0.05)',
+                  fontSize: '14px',
+                  color: 'var(--bulsu-red)',
+                  fontWeight: '600',
+                  textAlign: 'center'
+                }}>
                   {user.role?.toUpperCase()}
                 </div>
               </div>
             </div>
 
+            {/* Action Buttons */}
             {isEditingProfile && (
-              <div style={{ marginTop: '2rem', display: 'flex', gap: '12px' }}>
-                <button
-                  type="submit"
-                  disabled={profileLoading}
-                  style={{
-                    backgroundColor: '#28a745',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '6px',
-                    cursor: profileLoading ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  <Check size={16} />
-                  {profileLoading ? 'Saving...' : 'Save Changes'}
-                </button>
+              <div style={{
+                marginTop: '2.5rem',
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'right',
+              }}>
                 <button
                   type="button"
                   onClick={cancelEdit}
@@ -450,16 +565,41 @@ function FacultyDashboard({ user, onLogout }) {
                     backgroundColor: '#6c757d',
                     color: 'white',
                     border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '6px',
+                    padding: '12px 24px',
+                    borderRadius: '8px',
                     cursor: profileLoading ? 'not-allowed' : 'pointer',
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
+                    gap: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s ease',
+                    opacity: profileLoading ? 0.7 : 1
                   }}
                 >
                   <X size={16} />
                   Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={profileLoading}
+                  style={{
+                    backgroundColor: 'var(--bulsu-red)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '12px 24px',
+                    borderRadius: '8px',
+                    cursor: profileLoading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    gap: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 8px rgba(196, 30, 58, 0.3)',
+                    opacity: profileLoading ? 0.7 : 1
+                  }}
+                >
+                  <Check size={16} />
+                  {profileLoading ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             )}
@@ -616,25 +756,8 @@ function FacultyDashboard({ user, onLogout }) {
             )}
 
             {isEditingPassword && (
-              <div style={{ marginTop: '2rem', display: 'flex', gap: '12px' }}>
-                <button
-                  type="submit"
-                  disabled={profileLoading}
-                  style={{
-                    backgroundColor: '#28a745',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '6px',
-                    cursor: profileLoading ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  <Check size={16} />
-                  {profileLoading ? 'Changing...' : 'Change Password'}
-                </button>
+              <div style={{ marginTop: '2rem', display: 'flex', gap: '12px', justifyContent: 'right' }}>
+                
                 <button
                   type="button"
                   onClick={cancelEdit}
@@ -654,6 +777,24 @@ function FacultyDashboard({ user, onLogout }) {
                   <X size={16} />
                   Cancel
                 </button>
+                <button
+                  type="submit"
+                  disabled={profileLoading}
+                  style={{
+                    backgroundColor: 'var(--bulsu-red)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '6px',
+                    cursor: profileLoading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  <Check size={16} />
+                  {profileLoading ? 'Changing...' : 'Change Password'}
+                </button>
               </div>
             )}
           </form>
@@ -665,12 +806,6 @@ function FacultyDashboard({ user, onLogout }) {
   const renderStudentsSection = () => {
     return (
       <div className="students-section">
-        <div className="welcome-card">
-          <h2><Users size={18} /> My Students</h2>
-          <p>
-            View and manage students in your department. Use filters and search to find specific students easily.
-          </p>
-        </div>
 
         <div className="dashboard-stats">
           <div className="stat-card">
@@ -683,11 +818,11 @@ function FacultyDashboard({ user, onLogout }) {
           </div>
           <div className="stat-card">
             <h3>My Department</h3>
-            <div className="stat-value" style={{ fontSize: '16px', fontWeight: '500' }}>{user.department || 'All Campus'}</div>
+            <div className="stat-value" style={{ fontSize: '60px', fontWeight: '500' }}>{user.department || 'All Campus'}</div>
           </div>
           <div className="stat-card">
             <h3>Campus</h3>
-            <div className="stat-value" style={{ fontSize: '16px', fontWeight: '500' }}>{user.campusId}</div>
+            <div className="stat-value" style={{ fontSize: '40px', fontWeight: '500', verticalAlign: 'center' }}>{userCampusName || user.campusId}</div>
           </div>
         </div>
 
@@ -1040,8 +1175,8 @@ function FacultyDashboard({ user, onLogout }) {
             <p>View and manage students in your department</p>
           </div>
           <div className="topbar-actions">
-            <div className="topbar-user">
-              <span>{user.firstName} {user.lastName}</span>
+            <div className="topbar-user" >
+              <span id='facultyName'>{user.firstName} {user.lastName}</span>
               <small>Faculty - {user.department}</small>
             </div>
             <button className="outline-btn" onClick={onLogout}>Logout</button>

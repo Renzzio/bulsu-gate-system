@@ -2,15 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
 import GateControlInterface from './GateControlInterface';
 import visitorService from '../services/visitorService';
+import gateService from '../services/gateService';
 import authService, { updateOwnProfile, changePassword } from '../services/authService';
-import { QrCode, UserPlus, LogOut, Shield, UserCheck, Users, AlertTriangle, Clock, User, Eye, EyeOff, Edit, Check, X } from 'lucide-react';
+import { Eye, EyeOff, Edit, Check, X } from 'lucide-react';
 import bulsuLogo from '../bulsuLogo.png';
 import './SecurityDashboard.css';
+const UserPlusIcon = <span className="material-symbols-outlined">person_add</span>;
+const ClockIcon = <span className="material-symbols-outlined">schedule</span>;
+const UserCheckIcon = <span className="material-symbols-outlined">check_circle</span>;
+const UsersIcon = <span className="material-symbols-outlined">group</span>;
+const QrCodeIcon = <span className="material-symbols-outlined">qr_code</span>;
+const UserIcon = <span className="material-symbols-outlined">person</span>;
 
 const sidebarItems = [
-  { id: 'scanner', label: 'Gate Scanner', icon: QrCode },
-  { id: 'visitors', label: 'Visitor Management', icon: UserPlus },
-  { id: 'profile', label: 'My Profile', icon: User },
+  { id: 'scanner', label: 'Gate Scanner', icon: 'qr_code_scanner' },
+  { id: 'visitors', label: 'Visitor Management', icon: 'group' },
+  { id: 'profile', label: 'My Profile', icon: 'person' },
 ];
 
 function SecurityDashboard({ user, onLogout }) {
@@ -37,8 +44,25 @@ function SecurityDashboard({ user, onLogout }) {
   });
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileMessage, setProfileMessage] = useState('');
+  const [campusesData, setCampusesData] = useState([]);
 
   const initials = `${user.firstName?.[0] || ''}${user.lastName?.[0] || ''}`.toUpperCase();
+
+  // Fetch campuses on component mount for profile display
+  useEffect(() => {
+    const fetchCampuses = async () => {
+      try {
+        const response = await gateService.getCampuses();
+        if (response.success) {
+          setCampusesData(response.campuses || []);
+        }
+      } catch (error) {
+        console.error('Error fetching campuses for profile:', error);
+      }
+    };
+
+    fetchCampuses();
+  }, []);
 
   // Initialize profile form data when user object becomes available
   useEffect(() => {
@@ -60,7 +84,7 @@ function SecurityDashboard({ user, onLogout }) {
       return renderProfileSection();
     }
 
-    return <GateControlInterface user={user} onLogout={onLogout} />;
+    return <div className="gate-control-area"><GateControlInterface user={user} onLogout={onLogout} /></div>;
   };
 
   // Profile management functions
@@ -143,15 +167,11 @@ function SecurityDashboard({ user, onLogout }) {
   const renderProfileSection = () => {
     return (
       <div className="profile-section">
-        <div className="welcome-card">
-          <h2><User size={18} /> My Profile</h2>
-          <p>
-            Manage your personal information and account settings.
-          </p>
-        </div>
+        
 
         {/* Profile Information Display */}
-        <div style={{ background: 'white', borderRadius: '8px', padding: '2rem', marginBottom: '2rem', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <div className='welcome-card'>
+        <div style={{ background: 'white', borderRadius: '8px', padding: '2rem', marginBottom: '2rem',  }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
             <h3 style={{ margin: 0 }}>Profile Information</h3>
             {!isEditingProfile && (
@@ -189,55 +209,78 @@ function SecurityDashboard({ user, onLogout }) {
           )}
 
           <form onSubmit={handleProfileUpdate}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>First Name</label>
-                {isEditingProfile ? (
-                  <input
-                    type="text"
-                    value={profileFormData.firstName}
-                    onChange={(e) => setProfileFormData({...profileFormData, firstName: e.target.value})}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      fontSize: '14px'
-                    }}
-                  />
-                ) : (
-                  <div style={{ padding: '8px 12px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#f8f9fa' }}>
-                    {user.firstName}
-                  </div>
-                )}
+            {/* Responsive Grid Layout */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+              {/* Name Fields Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#374151', fontSize: '14px' }}>First Name</label>
+                  {isEditingProfile ? (
+                    <input
+                      type="text"
+                      value={profileFormData.firstName}
+                      onChange={(e) => setProfileFormData({...profileFormData, firstName: e.target.value})}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        backgroundColor: 'white',
+                        transition: 'border-color 0.2s ease'
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      padding: '12px 16px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      backgroundColor: '#f9fafb',
+                      fontSize: '14px',
+                      color: '#6b7280'
+                    }}>
+                      {user.firstName}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#374151', fontSize: '14px' }}>Last Name</label>
+                  {isEditingProfile ? (
+                    <input
+                      type="text"
+                      value={profileFormData.lastName}
+                      onChange={(e) => setProfileFormData({...profileFormData, lastName: e.target.value})}
+                      required
+                      style={{
+                        width: '100%',
+                        padding: '12px 16px',
+                        border: '1px solid #d1d5db',
+                        borderRadius: '8px',
+                        fontSize: '14px',
+                        backgroundColor: 'white',
+                        transition: 'border-color 0.2s ease'
+                      }}
+                    />
+                  ) : (
+                    <div style={{
+                      padding: '12px 16px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      backgroundColor: '#f9fafb',
+                      fontSize: '14px',
+                      color: '#6b7280'
+                    }}>
+                      {user.lastName}
+                    </div>
+                  )}
+                </div>
               </div>
 
+              {/* Email Field */}
               <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Last Name</label>
-                {isEditingProfile ? (
-                  <input
-                    type="text"
-                    value={profileFormData.lastName}
-                    onChange={(e) => setProfileFormData({...profileFormData, lastName: e.target.value})}
-                    required
-                    style={{
-                      width: '100%',
-                      padding: '8px 12px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      fontSize: '14px'
-                    }}
-                  />
-                ) : (
-                  <div style={{ padding: '8px 12px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#f8f9fa' }}>
-                    {user.lastName}
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Email</label>
+                <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#374151', fontSize: '14px' }}>Email Address</label>
                 {isEditingProfile ? (
                   <input
                     type="email"
@@ -246,54 +289,72 @@ function SecurityDashboard({ user, onLogout }) {
                     required
                     style={{
                       width: '100%',
-                      padding: '8px 12px',
-                      border: '1px solid #ddd',
-                      borderRadius: '4px',
-                      fontSize: '14px'
+                      padding: '12px 16px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      backgroundColor: 'white',
+                      transition: 'border-color 0.2s ease'
                     }}
                   />
                 ) : (
-                  <div style={{ padding: '8px 12px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#f8f9fa' }}>
+                  <div style={{
+                    padding: '12px 16px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    backgroundColor: '#f9fafb',
+                    fontSize: '14px',
+                    color: '#6b7280',
+                    wordBreak: 'break-all'
+            
+                  }}>
                     {user.email}
                   </div>
                 )}
               </div>
 
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Campus</label>
-                <div style={{ padding: '8px 12px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#f8f9fa' }}>
-                  {user.campusId}
+              {/* Campus and Role Fields Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#374151', fontSize: '14px' }}>Campus</label>
+                  <div style={{
+                    padding: '12px 16px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    backgroundColor: '#f9fafb',
+                    fontSize: '14px',
+                    color: '#6b7280'
+                  }}>
+                    {campusesData.find(c => c.campusId === user.campusId)?.name || user.campusId}
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Role</label>
-                <div style={{ padding: '8px 12px', border: '1px solid #eee', borderRadius: '4px', backgroundColor: '#f8f9fa' }}>
-                  {user.role?.toUpperCase()}
+                <div>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600', color: '#374151', fontSize: '14px' }}>Role</label>
+                  <div style={{
+                    padding: '12px 16px',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(196, 30, 58, 0.05)',
+                    fontSize: '14px',
+                    color: 'var(--bulsu-red)',
+                    fontWeight: '500',
+                    textAlign: 'center'
+                  }}>
+                    {user.role?.toUpperCase()}
+                  </div>
                 </div>
               </div>
             </div>
 
+            {/* Action Buttons */}
             {isEditingProfile && (
-              <div style={{ marginTop: '2rem', display: 'flex', gap: '12px' }}>
-                <button
-                  type="submit"
-                  disabled={profileLoading}
-                  style={{
-                    backgroundColor: '#28a745',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '6px',
-                    cursor: profileLoading ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  <Check size={16} />
-                  {profileLoading ? 'Saving...' : 'Save Changes'}
-                </button>
+              <div style={{
+                marginTop: '2.5rem',
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'right',
+              }}>
                 <button
                   type="button"
                   onClick={cancelEdit}
@@ -302,24 +363,51 @@ function SecurityDashboard({ user, onLogout }) {
                     backgroundColor: '#6c757d',
                     color: 'white',
                     border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '6px',
+                    padding: '12px 24px',
+                    borderRadius: '8px',
                     cursor: profileLoading ? 'not-allowed' : 'pointer',
                     display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
+                    gap: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s ease',
+                    opacity: profileLoading ? 0.7 : 1
                   }}
                 >
                   <X size={16} />
                   Cancel
                 </button>
+                <button
+                  type="submit"
+                  disabled={profileLoading}
+                  style={{
+                    backgroundColor: 'var(--bulsu-red)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '12px 24px',
+                    borderRadius: '8px',
+                    cursor: profileLoading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    gap: '8px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s ease',
+                    boxShadow: '0 2px 8px rgba(196, 30, 58, 0.3)',
+                    opacity: profileLoading ? 0.7 : 1
+                  }}
+                >
+                  <Check size={16} />
+                  {profileLoading ? 'Saving...' : 'Save Changes'}
+                </button>
               </div>
             )}
           </form>
         </div>
+        </div>
 
         {/* Password Change Section */}
-        <div style={{ background: 'white', borderRadius: '8px', padding: '2rem', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+        <div className='welcome-card'>
+        <div style={{ background: 'white', borderRadius: '8px', padding: '2rem',  }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
             <h3 style={{ margin: 0 }}>Change Password</h3>
             {!isEditingPassword && (
@@ -468,25 +556,8 @@ function SecurityDashboard({ user, onLogout }) {
             )}
 
             {isEditingPassword && (
-              <div style={{ marginTop: '2rem', display: 'flex', gap: '12px' }}>
-                <button
-                  type="submit"
-                  disabled={profileLoading}
-                  style={{
-                    backgroundColor: '#28a745',
-                    color: 'white',
-                    border: 'none',
-                    padding: '10px 20px',
-                    borderRadius: '6px',
-                    cursor: profileLoading ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                >
-                  <Check size={16} />
-                  {profileLoading ? 'Changing...' : 'Change Password'}
-                </button>
+              <div style={{ marginTop: '2rem', display: 'flex', gap: '12px', justifyContent: 'right' }}>
+                
                 <button
                   type="button"
                   onClick={cancelEdit}
@@ -506,10 +577,30 @@ function SecurityDashboard({ user, onLogout }) {
                   <X size={16} />
                   Cancel
                 </button>
+                <button
+                  type="submit"
+                  disabled={profileLoading}
+                  style={{
+                    backgroundColor: 'var(--bulsu-red)',
+                    color: 'white',
+                    border: 'none',
+                    padding: '10px 20px',
+                    borderRadius: '6px',
+                    cursor: profileLoading ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    boxShadow: '0 2px 8px rgba(196, 30, 58, 0.3)'
+                  }}
+                >
+                  <Check size={16} />
+                  {profileLoading ? 'Changing...' : 'Change Password'}
+                </button>
               </div>
             )}
           </form>
         </div>
+      </div>
       </div>
     );
   };
@@ -529,7 +620,7 @@ function SecurityDashboard({ user, onLogout }) {
                 className={activeSection === item.id ? 'active' : ''}
                 onClick={() => setActiveSection(item.id)}
               >
-                <item.icon size={16} />
+                <span className="material-symbols-outlined">{item.icon}</span>
                 <span className="label">{item.label}</span>
               </button>
             ))}
@@ -545,18 +636,15 @@ function SecurityDashboard({ user, onLogout }) {
             <div>
               <h1>{sidebarItems.find(item => item.id === activeSection)?.label || 'Gate Scanner'}</h1>
               <p>{activeSection === 'scanner'
-                ? 'Scan QR codes and manage gate access'
-                : 'Create temporary access for visitors'}</p>
+                ? 'Dashboard overview and statistics'
+                : activeSection === 'visitors' ? 'Module management' : 'Account settings'}</p>
             </div>
-            <div className="user-chip">
-              <div className="avatar">{initials || 'GU'}</div>
-              <div>
-                <p>{user.firstName} {user.lastName}</p>
-                <small>On Duty</small>
+            <div className="topbar-actions">
+              <div className="topbar-user">
+                <strong>{user.firstName} {user.lastName}</strong>
+                <span>{user.role?.toUpperCase()}</span>
               </div>
-              <button className="logout-button" onClick={onLogout}>
-                Logout
-              </button>
+              <button className="btn btn-secondary" onClick={onLogout}>Logout</button>
             </div>
           </header>
 
@@ -573,56 +661,61 @@ function VisitorManagement({ user }) {
   const [showVisitorModal, setShowVisitorModal] = useState(false);
   const [visitors, setVisitors] = useState([]);
   const [filteredVisitors, setFilteredVisitors] = useState([]);
+  const [campusesData, setCampusesData] = useState([]);
   const [generatedQR, setGeneratedQR] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [visitorStats, setVisitorStats] = useState({
-    totalToday: 0,
-    activeVisitors: 0,
-    expiredPasses: 0,
-    visitsUsedToday: 0
-  });
+
+  // Fetch campuses on component mount
+  useEffect(() => {
+    const fetchCampuses = async () => {
+      try {
+        const response = await gateService.getCampuses();
+        if (response.success) {
+          setCampusesData(response.campuses || []);
+        }
+      } catch (error) {
+        console.error('Error fetching campuses:', error);
+      }
+    };
+
+    fetchCampuses();
+  }, []);
+
+  // Fetch visitors for the guard's campus
+  useEffect(() => {
+    const fetchVisitors = async () => {
+      try {
+        setLoading(true);
+        const response = await visitorService.getAllVisitorsForGuards();
+        if (response.success) {
+          setVisitors(response.visitors || []);
+        }
+      } catch (error) {
+        console.error('Error fetching visitors:', error);
+        setError('Failed to load visitors');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVisitors();
+  }, []);
 
   // Search and filter visitors
   useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredVisitors(visitors);
-    } else {
-      const filtered = visitors.filter(visitor =>
-        visitor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        visitor.contact.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (visitor.email && visitor.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        visitor.purpose.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (visitor.visitTo && visitor.visitTo.toLowerCase().includes(searchTerm.toLowerCase()))
-      );
-      setFilteredVisitors(filtered);
-    }
+    const filtered = visitors.filter(visitor =>
+      visitor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      visitor.contact.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (visitor.email && visitor.email.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      visitor.purpose.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (visitor.visitTo && visitor.visitTo.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+    setFilteredVisitors(filtered);
   }, [visitors, searchTerm]);
 
-  // Calculate statistics
-  useEffect(() => {
-    const today = new Date().toISOString().split('T')[0];
-    const stats = visitors.reduce((acc, visitor) => {
-      const isToday = visitor.createdDate === today;
-      const isActive = visitor.usageCount < visitor.maxUses && isToday;
-
-      if (isToday) {
-        acc.totalToday += 1;
-        acc.visitsUsedToday += visitor.usageCount;
-        if (isActive) {
-          acc.activeVisitors += 1;
-        } else if (!isActive && visitor.usageCount > 0) {
-          acc.expiredPasses += 1;
-        } else if (!isActive) {
-          acc.expiredPasses += 1;
-        }
-      }
-      return acc;
-    }, { totalToday: 0, activeVisitors: 0, expiredPasses: 0, visitsUsedToday: 0 });
-
-    setVisitorStats(stats);
-  }, [visitors]);
+  // No statistics calculation needed since dashboard cards were removed
 
   // Check authentication and role
   useEffect(() => {
@@ -640,9 +733,6 @@ function VisitorManagement({ user }) {
           setError(`Access denied. Your role "${user.role}" doesn't have permission to manage visitors. Required roles: ${allowedRoles.join(', ')}`);
           return;
         }
-
-        // Fetch today's visitors
-        fetchTodaysVisitors();
       } catch (error) {
         if (error.message === 'NOT_LOGGED_IN') {
           setError('You must login first to access visitor management. Please visit the login page.');
@@ -654,21 +744,6 @@ function VisitorManagement({ user }) {
 
     checkAuth();
   }, [user.role]);
-
-  const fetchTodaysVisitors = async () => {
-    try {
-      setLoading(true);
-      const response = await visitorService.getTodaysVisitors();
-      if (response.success) {
-        setVisitors(response.visitors);
-      }
-    } catch (error) {
-      console.error('Error fetching visitors:', error);
-      setError('Failed to load visitors');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleCreateVisitor = async (visitorData) => {
     try {
@@ -684,7 +759,10 @@ function VisitorManagement({ user }) {
 
       if (response.success) {
         // Refresh the visitors list
-        await fetchTodaysVisitors();
+        const refreshResponse = await visitorService.getAllVisitorsForGuards();
+        if (refreshResponse.success) {
+          setVisitors(refreshResponse.visitors || []);
+        }
         setGeneratedQR(response.visitor.visitorId);
       }
       setShowVisitorModal(false);
@@ -715,44 +793,43 @@ function VisitorManagement({ user }) {
         </div>
       )}
 
-      {/* Header Section with Title and CTA */}
-      <div className="visitor-header-section">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-          <div>
-            <h2 style={{ marginBottom: '8px' }}>Visitor Management Dashboard</h2>
-            <p style={{ color: 'var(--text-muted)', margin: 0 }}>
-              Create and manage temporary access passes for university visitors
-            </p>
-          </div>
-          <button
-            className="primary-btn"
-            onClick={() => setShowVisitorModal(true)}
-            disabled={loading}
-          >
-            <UserPlus size={16} />
-            Create New Visitor Pass
-          </button>
-        </div>
+      {/* Stats Section - Full table width */}
+      <div style={{
+        marginBottom: '16px',
+        maxWidth: '1200px',
+        marginLeft: 'auto',
+        marginRight: 'auto',
+        width: '100%'
+      }}>
+       
+      </div>
 
-        {/* Quick Stats Cards */}
-        <div className="visitor-stats">
-          <div className="visitor-stat-card">
-            <h3>{visitorStats.totalToday}</h3>
-            <p>Total Today</p>
-          </div>
-          <div className="visitor-stat-card">
-            <h3>{visitorStats.activeVisitors}</h3>
-            <p>Active Passes</p>
-          </div>
-          <div className="visitor-stat-card">
-            <h3>{visitorStats.expiredPasses}</h3>
-            <p>Expired Today</p>
-          </div>
-          <div className="visitor-stat-card">
-            <h3>{visitorStats.visitsUsedToday}</h3>
-            <p>Total Visits</p>
-          </div>
-        </div>
+      {/* Search and Action Controls - Full table width */}
+      <div style={{
+        marginBottom: '20px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        maxWidth: '1200px',
+        marginLeft: 'auto',
+        marginRight: 'auto',
+        width: '100%'
+      }}>
+        
+
+        <button
+          className="primary-btn"
+          onClick={() => setShowVisitorModal(true)}
+          disabled={loading}
+          style={{
+            flexShrink: 0,
+            height: '40px',
+            marginBottom: 0
+          }}
+        >
+          {UserPlusIcon}
+          Create New Visitor Pass
+        </button>
       </div>
 
       {loading ? (
@@ -763,36 +840,19 @@ function VisitorManagement({ user }) {
           borderRadius: '12px',
           border: '2px dashed #e9ecef'
         }}>
-          <Clock size={56} style={{ marginBottom: '20px', color: '#ccc' }} />
+          {ClockIcon}
           <h3>Loading Visitor Data...</h3>
           <p>Please wait while we fetch today's visitor information.</p>
         </div>
       ) : visitors.length === 0 ? (
         <div className="visitor-empty-state">
-          <UserCheck size={80} className="empty-icon" />
-          <h3>No Visitor Passes Created Today</h3>
+          <span className="material-symbols-outlined" style={{ fontSize: '80px' }}>check_circle</span>
+          <h3>No Visitor Passes Found</h3>
           <p>
             Visitor management is an essential part of campus security.
             Create temporary QR codes for campus visitors, delivery personnel, and other guests
             requiring limited access to university facilities.
           </p>
-
-          <div className="visitor-cta-buttons">
-            <button
-              className="visitor-cta-button"
-              onClick={() => setShowVisitorModal(true)}
-            >
-              <UserPlus size={20} />
-              Create First Visitor Pass
-            </button>
-            <button
-              className="visitor-cta-button secondary"
-              onClick={() => setError(null)}
-            >
-              <Shield size={20} />
-              Learn More About Security
-            </button>
-          </div>
 
           <div style={{
             marginTop: 'var(--spacing-2xl)',
@@ -821,47 +881,38 @@ function VisitorManagement({ user }) {
           </div>
         </div>
       ) : (
-        <div>
-          {/* Search */}
-          <div className="visitor-search">
-            <Users size={18} className="search-icon" />
-            <input
-              type="text"
-              placeholder="Search visitors by name, contact, purpose, or person being visited..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          {/* Visitors Table - Full Width */}
-          <div className="visitors-table">
+        <div className="visitors-table-container" style={{ marginTop: '0' }}>
+          {/* Visitors Table - Centered with proper padding */}
+          <div className="visitors-table" style={{ marginTop: '0' }}>
             <table>
               <thead>
                 <tr>
                   <th>Visitor Details</th>
                   <th>Contact Info</th>
-                  <th>Purpose & Status</th>
+                  <th>Campus</th>
+                  <th>Purpose</th>
+                  <th>Status</th>
                   <th>Created</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredVisitors.map((visitor, index) => {
-                  const usedToday = visitor.usageCount;
-                  const isToday = visitor.createdDate === new Date().toISOString().split('T')[0];
-                  const isActive = usedToday < visitor.maxUses && isToday;
-                  const isExpired = usedToday >= visitor.maxUses && isToday;
-                  const expiringSoon = usedToday === visitor.maxUses - 1 && isToday;
+                  const usageCount = visitor.usageCount;
+                  const isActive = usageCount < visitor.maxUses;
+                  const expiringSoon = usageCount === visitor.maxUses - 1 && isActive;
 
                   let badgeClass = 'visitor-usage-badge ';
                   if (expiringSoon) badgeClass += 'expiring-soon';
-                  else if (isExpired) badgeClass += 'expired';
+                  else if (!isActive) badgeClass += 'expired';
                   else if (isActive) badgeClass += 'active';
 
-                  let badgeText = `${usedToday}/${visitor.maxUses} uses`;
+                  let badgeText = `${usageCount}/${visitor.maxUses} uses`;
                   if (expiringSoon) badgeText = `⚠️ Last Entry`;
-                  else if (isExpired) badgeText = `✓ Completed`;
+                  else if (!isActive) badgeText = `✓ Completed`;
                   else if (isActive) badgeText = `📱 Active`;
+
+                  const campusName = campusesData.find(c => c.campusId === visitor.campusId)?.name || 'Unknown';
 
                   return (
                     <tr key={visitor.id || index}>
@@ -897,13 +948,15 @@ function VisitorManagement({ user }) {
                         </div>
                       </td>
                       <td>
+                        <span className="tag" style={{ backgroundColor: '#17a2b8', color: 'white' }}>
+                          {campusName}
+                        </span>
+                      </td>
+                      <td>
                         <div style={{ marginBottom: '8px' }}>
                           <div style={{ fontWeight: '500', marginBottom: '4px' }}>
                             {visitor.purpose}
                           </div>
-                          <span className={badgeClass} style={{ fontSize: '11px' }}>
-                            {badgeText}
-                          </span>
                         </div>
                         {(visitor.additionalNotes?.length > 0) && (
                           <div style={{ fontSize: '12px', color: '#6c757d' }}>
@@ -914,14 +967,19 @@ function VisitorManagement({ user }) {
                         )}
                       </td>
                       <td>
+                        <span className={badgeClass} style={{ fontSize: '11px' }}>
+                          {badgeText}
+                        </span>
+                      </td>
+                      <td>
                         <div style={{ fontSize: '14px', fontWeight: '500' }}>
+                          {new Date(visitor.createdAt).toLocaleDateString()}
+                        </div>
+                        <div style={{ fontSize: '11px', color: '#6c757d' }}>
                           {new Date(visitor.createdAt).toLocaleTimeString([], {
                             hour: '2-digit',
                             minute: '2-digit'
                           })}
-                        </div>
-                        <div style={{ fontSize: '11px', color: '#6c757d' }}>
-                          Today
                         </div>
                       </td>
                       <td>
@@ -931,7 +989,7 @@ function VisitorManagement({ user }) {
                             onClick={() => setGeneratedQR(visitor.visitorId)}
                             title="View QR Code"
                           >
-                            <QrCode size={14} />
+                            {QrCodeIcon}
                             Show QR
                           </button>
                         </div>
@@ -990,26 +1048,79 @@ function VisitorModal({ onClose, onCreateVisitor }) {
       left: 0,
       right: 0,
       bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.5)',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      zIndex: 1000
+      zIndex: 1000,
+      animation: 'fadeIn 0.3s ease'
     }}>
       <div style={{
         backgroundColor: 'white',
-        borderRadius: '12px',
-        padding: '24px',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: 'var(--shadow-xl)',
+        border: '1px solid var(--card-border)',
         width: '500px',
         maxWidth: '90vw',
         maxHeight: '90vh',
-        overflow: 'auto'
+        overflow: 'auto',
+        animation: 'slideUp 0.3s ease'
       }}>
-        <h3 style={{ marginTop: 0, marginBottom: '20px' }}>Create Visitor Access</h3>
+        {/* Modal Header - Bulsu Themed */}
+        <div style={{
+          background: 'linear-gradient(135deg, var(--bulsu-red) 0%, var(--bulsu-dark-red) 100%)',
+          color: 'white',
+          padding: 'var(--spacing-xl) var(--spacing-2xl)',
+          borderTopLeftRadius: 'var(--radius-lg)',
+          borderTopRightRadius: 'var(--radius-lg)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center'
+        }}>
+          <h3 style={{
+            margin: 0,
+            fontSize: 'var(--font-size-xl)',
+            fontWeight: 'var(--font-weight-semibold)',
+            letterSpacing: '0.5px'
+          }}>
+            <span className="material-symbols-outlined" style={{
+              fontSize: 'var(--font-size-xl)',
+              marginRight: 'var(--spacing-sm)',
+              verticalAlign: 'middle'
+            }}>
+              person_add
+            </span>
+            Create Visitor Access
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'rgba(255, 255, 255, 0.8)',
+              cursor: 'pointer',
+              padding: 'var(--spacing-xs)',
+              borderRadius: 'var(--radius-full)',
+              width: '32px',
+              height: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              transition: 'all 0.2s ease',
+              fontSize: 'var(--font-size-xl)'
+            }}
+            onMouseOver={(e) => e.target.style.color = 'white'}
+            onMouseOut={(e) => e.target.style.color = 'rgba(255, 255, 255, 0.8)'}
+          >
+            ✕
+          </button>
+        </div>
 
-        <form onSubmit={handleSubmit}>
+        {/* Modal Content */}
+        <div style={{ padding: 'var(--spacing-2xl)' }}>
+          <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Full Name *</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', textAlign: 'left' }}>Full Name *</label>
             <input
               type="text"
               name="name"
@@ -1028,7 +1139,7 @@ function VisitorModal({ onClose, onCreateVisitor }) {
 
           <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
             <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Phone Number *</label>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', textAlign: 'left' }}>Phone Number *</label>
               <input
                 type="tel"
                 name="contact"
@@ -1045,7 +1156,7 @@ function VisitorModal({ onClose, onCreateVisitor }) {
               />
             </div>
             <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Email (Optional)</label>
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', textAlign: 'left' }}>Email (Optional)</label>
               <input
                 type="email"
                 name="email"
@@ -1063,7 +1174,7 @@ function VisitorModal({ onClose, onCreateVisitor }) {
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Address *</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', textAlign: 'left' }}>Address *</label>
             <textarea
               name="address"
               required
@@ -1083,7 +1194,7 @@ function VisitorModal({ onClose, onCreateVisitor }) {
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Purpose of Visit *</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', textAlign: 'left' }}>Purpose of Visit *</label>
             <select
               name="purpose"
               required
@@ -1108,7 +1219,7 @@ function VisitorModal({ onClose, onCreateVisitor }) {
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Visiting Person/Office</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', textAlign: 'left' }}>Visiting Person/Office</label>
             <input
               type="text"
               name="visitTo"
@@ -1126,7 +1237,7 @@ function VisitorModal({ onClose, onCreateVisitor }) {
           </div>
 
           <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Additional Notes</label>
+            <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', textAlign: 'left' }}>Additional Notes</label>
             <textarea
               name="additionalNotes"
               value={formData.additionalNotes}
@@ -1144,17 +1255,21 @@ function VisitorModal({ onClose, onCreateVisitor }) {
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: 'var(--spacing-xl)' }}>
             <button
               type="button"
               onClick={onClose}
               style={{
-                padding: '8px 16px',
-                backgroundColor: '#6c757d',
+                padding: 'var(--spacing-md) var(--spacing-lg)',
+                backgroundColor: 'var(--neutral-500)',
                 color: 'white',
                 border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
+                borderRadius: 'var(--radius-md)',
+                cursor: 'pointer',
+                fontSize: 'var(--font-size-sm)',
+                fontWeight: 'var(--font-weight-medium)',
+                transition: 'all 0.2s ease',
+                minWidth: '100px'
               }}
             >
               Cancel
@@ -1162,18 +1277,31 @@ function VisitorModal({ onClose, onCreateVisitor }) {
             <button
               type="submit"
               style={{
-                padding: '8px 16px',
-                backgroundColor: '#28a745',
+                padding: 'var(--spacing-md) var(--spacing-lg)',
+                backgroundColor: 'var(--bulsu-red)',
                 color: 'white',
                 border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
+                borderRadius: 'var(--radius-md)',
+                cursor: 'pointer',
+                fontSize: 'var(--font-size-sm)',
+                fontWeight: 'var(--font-weight-medium)',
+                transition: 'all 0.2s ease',
+                boxShadow: 'var(--shadow-sm)',
+                minWidth: '160px'
               }}
             >
+              <span className="material-symbols-outlined" style={{
+                fontSize: 'var(--font-size-base)',
+                marginRight: 'var(--spacing-xs)',
+                verticalAlign: 'middle'
+              }}>
+                person_add
+              </span>
               Create Visitor Pass
             </button>
           </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );

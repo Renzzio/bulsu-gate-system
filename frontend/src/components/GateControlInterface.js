@@ -25,6 +25,7 @@ const GateControlInterface = ({ user, onLogout }) => {
   const [selectedViolation, setSelectedViolation] = useState('');
   const [violationNotes, setViolationNotes] = useState('');
   const [approvalData, setApprovalData] = useState(null);
+  const [showStatusModal, setShowStatusModal] = useState(false);
 
   // Range options (simplified since we only want latest)
   const rangeOptions = [
@@ -112,11 +113,13 @@ const GateControlInterface = ({ user, onLogout }) => {
     event.preventDefault();
     if (!scanInput.trim()) {
       setStatus({ type: 'error', message: 'Please enter or scan a student ID before submitting.' });
+      setShowStatusModal(true);
       return;
     }
 
     setLoading(true);
     setStatus(null);
+    setShowStatusModal(false);
 
     try {
       const scannedId = scanInput.trim();
@@ -135,12 +138,14 @@ const GateControlInterface = ({ user, onLogout }) => {
               message: `${result.message} - Usage: ${result.visitor.usageCount}/${result.visitor.maxUses}`,
               details: { visitor: result.visitor, actionType: result.actionType }
             });
+            setShowStatusModal(true);
           } else {
             setStatus({
               type: 'warning',
               message: `${result.message}`,
               details: result
             });
+            setShowStatusModal(true);
           }
         } catch (error) {
           console.error('Visitor scan error:', error);
@@ -149,6 +154,7 @@ const GateControlInterface = ({ user, onLogout }) => {
             message: `Visitor scan failed: ${error.message || 'Unknown error'}`,
             details: error
           });
+          setShowStatusModal(true);
         }
       } else {
         // For students: Immediate schedule check
@@ -167,6 +173,7 @@ const GateControlInterface = ({ user, onLogout }) => {
             message: response.message,
             details: response
           });
+          setShowStatusModal(true);
         } else if (response.allowed) {
           // Entries with schedule: show approval UI
           setApprovalData({
@@ -186,6 +193,7 @@ const GateControlInterface = ({ user, onLogout }) => {
             message: response.message,
             details: response
           });
+          setShowStatusModal(true);
         }
       }
 
@@ -205,6 +213,7 @@ const GateControlInterface = ({ user, onLogout }) => {
         message: error.message || 'Scan failed',
         details: error
       });
+      setShowStatusModal(true);
 
       // Still refresh logs even on error to show any relevant updates
       setTimeout(() => {
@@ -242,6 +251,7 @@ const GateControlInterface = ({ user, onLogout }) => {
           : 'Access Approved',
         details: response
       });
+      setShowStatusModal(true);
 
       // Clear inputs and approval data
       setScanInput('');
@@ -260,6 +270,7 @@ const GateControlInterface = ({ user, onLogout }) => {
         message: error.message || 'Approval failed',
         details: error
       });
+      setShowStatusModal(true);
       setApprovalData(null);
     } finally {
       setLoading(false);
@@ -350,6 +361,17 @@ const GateControlInterface = ({ user, onLogout }) => {
         throw new Error('Scanner element not found');
       }
 
+      // Calculate qrbox size based on camera preview container
+      const container = scannerElement.closest('.camera-preview');
+      let qrboxSize;
+      if (container) {
+        const containerSize = Math.min(container.clientWidth, container.clientHeight);
+        qrboxSize = Math.max(180, Math.min(containerSize * 0.7, 300));
+      } else {
+        // Fallback to responsive breakpoints
+        qrboxSize = (window.innerWidth <= 480) ? 180 : (window.innerWidth <= 768) ? 200 : 250;
+      }
+
       // Clean up any existing scanner instance
       if (html5QrCodeRef.current) {
         try {
@@ -365,7 +387,7 @@ const GateControlInterface = ({ user, onLogout }) => {
 
       const config = {
         fps: 10,
-        qrbox: { width: 250, height: 250 },
+        qrbox: { width: qrboxSize, height: qrboxSize },
         aspectRatio: 1.0,
         disableFlip: false
       };
@@ -452,6 +474,7 @@ const GateControlInterface = ({ user, onLogout }) => {
     // Set the scanned ID to the input field
     setScanInput(scannedId);
     setStatus(null);
+    setShowStatusModal(false);
 
     // Stop scanning after successful scan
     try {
@@ -475,12 +498,14 @@ const GateControlInterface = ({ user, onLogout }) => {
             message: `${result.message} - Usage: ${result.visitor.usageCount}/${result.visitor.maxUses}`,
             details: { visitor: result.visitor, actionType: result.actionType }
           });
+          setShowStatusModal(true);
         } else {
           setStatus({
             type: 'warning',
             message: `${result.message}`,
             details: result
           });
+          setShowStatusModal(true);
         }
       } else {
         // For students: Immediate schedule check and approval UI
@@ -499,6 +524,7 @@ const GateControlInterface = ({ user, onLogout }) => {
             message: response.message,
             details: response
           });
+          setShowStatusModal(true);
         } else if (response.allowed) {
           // Entries with schedule: automatically show approval UI
           setApprovalData({
@@ -516,6 +542,7 @@ const GateControlInterface = ({ user, onLogout }) => {
             message: response.message,
             details: response
           });
+          setShowStatusModal(true);
           // Clear input for next scan
           setScanInput('');
         }
@@ -532,6 +559,7 @@ const GateControlInterface = ({ user, onLogout }) => {
         message: error.message || 'Scan processing failed',
         details: error
       });
+      setShowStatusModal(true);
       setScanInput('');
     }
   };
@@ -610,51 +638,109 @@ const GateControlInterface = ({ user, onLogout }) => {
                 <div style={{ position: 'relative', width: '100%', height: '100%' }}>
                   <div id={scannerId} style={{ width: '100%', height: '100%' }}></div>
                   {scanError && (
-                    <div style={{ 
-                      position: 'absolute', 
-                      top: '10px', 
-                      left: '10px', 
+                    <div style={{
+                      position: 'absolute',
+                      top: '10px',
+                      left: '10px',
                       right: '10px',
-                      background: 'rgba(255, 0, 0, 0.9)',
+                      background: 'rgba(220, 53, 69, 0.95)',
                       color: 'white',
-                      padding: '10px',
-                      borderRadius: '4px',
-                      fontSize: '14px'
+                      padding: '12px 16px',
+                      borderRadius: '8px',
+                      fontSize: '14px',
+                      fontWeight: '500',
+                      boxShadow: '0 4px 12px rgba(220, 53, 69, 0.3)'
                     }}>
                       {scanError}
                     </div>
                   )}
                   <div style={{
                     position: 'absolute',
+                    top: '20px',
+                    left: '20px',
+                    background: 'rgba(0, 0, 0, 0.8)',
+                    color: 'white',
+                    padding: '6px 12px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}>
+                    🔴 <span>LIVE</span>
+                  </div>
+                  <div style={{
+                    position: 'absolute',
                     bottom: '20px',
                     left: '50%',
                     transform: 'translateX(-50%)',
-                    background: 'rgba(0, 0, 0, 0.7)',
-                    color: 'white',
-                    padding: '8px 16px',
-                    borderRadius: '4px',
+                    background: 'rgba(255, 255, 255, 0.95)',
+                    color: '#333',
+                    padding: '10px 20px',
+                    borderRadius: '25px',
                     fontSize: '14px',
+                    fontWeight: '600',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px'
+                    gap: '8px',
+                    boxShadow: '0 2px 10px rgba(0, 0, 0, 0.2)'
                   }}>
-                    <QrCode size={16} />
-                    Point camera at QR code
+                    <QrCode size={18} />
+                    Position QR code within frame
                   </div>
                 </div>
               ) : (
-                <div style={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
-                  alignItems: 'center', 
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
                   justifyContent: 'center',
                   height: '100%',
-                  color: '#999',
-                  gap: '12px'
+                  textAlign: 'center',
+                  padding: '20px'
                 }}>
-                  <QrCode size={48} />
-                  <p>Click "Start QR Scanner" to begin scanning</p>
-                  <p style={{ fontSize: '12px' }}>Make sure to allow camera permissions</p>
+                  <div style={{
+                    width: '80px',
+                    height: '80px',
+                    background: 'linear-gradient(135deg, #e3f2fd, #bbdefb)',
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '20px',
+                    boxShadow: '0 4px 15px rgba(33, 150, 243, 0.3)'
+                  }}>
+                    <QrCode size={40} color="#1976d2" />
+                  </div>
+                  <h4 style={{
+                    margin: '0 0 10px 0',
+                    color: '#424242',
+                    fontSize: '18px',
+                    fontWeight: '600'
+                  }}>
+                    QR Code Scanner Ready
+                  </h4>
+                  <p style={{
+                    margin: '0 0 8px 0',
+                    color: '#666',
+                    fontSize: '14px',
+                    lineHeight: '1.4'
+                  }}>
+                    Click "Start QR Scanner" to begin scanning student IDs
+                  </p>
+                  <div style={{
+                    background: 'linear-gradient(135deg, #fff3cd, #ffeaa7)',
+                    padding: '12px 16px',
+                    borderRadius: '8px',
+                    border: '1px solid #fad44a',
+                    fontSize: '13px',
+                    color: '#856404',
+                    marginTop: '15px'
+                  }}>
+                    <strong>⚠️ Camera Permission Required</strong><br />
+                    Allow access when prompted by your browser
+                  </div>
                 </div>
               )}
             </div>
@@ -892,41 +978,124 @@ const GateControlInterface = ({ user, onLogout }) => {
             </div>
           )}
 
-          {status && (
-            <div className={`scan-status-large ${status.type}`} style={{
-              textAlign: 'center',
-              margin: '20px auto',
-              padding: '40px',
-              borderRadius: '15px',
-              backgroundColor: status.type === 'success' ? '#27ae60' : status.type === 'warning' ? '#f39c12' : '#e74c3c',
-              color: 'white',
-              fontSize: '48px',
-              fontWeight: 'bold',
-              boxShadow: '0 4px 15px rgba(0,0,0,0.3)',
-              maxWidth: '600px'
+          {/* Status Modal */}
+          {showStatusModal && status && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000,
+              animation: 'fadeIn 0.3s ease'
             }}>
-              <div className="status-indicator" style={{ fontSize: '72px', marginBottom: '20px' }}>
-                {status.type === 'success' ? '✅ ACCESS GRANTED' : status.type === 'warning' ? '⚠️ ACCESS DENIED' : '❌ ACCESS DENIED'}
-              </div>
-              <div style={{ fontSize: '24px' }}>
-                {status.message}
-              </div>
-              {status.details?.reasons && status.details.reasons.length > 0 && (
-                <div style={{ fontSize: '18px', marginTop: '20px' }}>
-                  <ul style={{ listStyle: 'none', padding: 0 }}>
-                    {status.details.reasons.map((reason, index) => (
-                      <li key={index}>• {reason}</li>
-                    ))}
-                  </ul>
+              <div style={{
+                backgroundColor: 'white',
+                borderRadius: '20px',
+                boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+                maxWidth: '500px',
+                width: '90%',
+                maxHeight: '90vh',
+                overflow: 'auto',
+                animation: 'slideUp 0.3s ease'
+              }}>
+                {/* Modal Header */}
+                <div style={{
+                  backgroundColor: status.type === 'success' ? '#27ae60' : status.type === 'warning' ? '#f39c12' : '#e74c3c',
+                  color: 'white',
+                  padding: '30px 20px',
+                  textAlign: 'center',
+                  borderTopLeftRadius: '20px',
+                  borderTopRightRadius: '20px',
+                  position: 'relative'
+                }}>
+                  <div style={{ fontSize: '64px', marginBottom: '15px' }}>
+                    {status.type === 'success' ? '✅' : status.type === 'warning' ? '⚠️' : '❌'}
+                  </div>
+                  <h2 style={{ margin: '0', fontSize: '24px', fontWeight: 'bold' }}>
+                    {status.type === 'success' ? 'ACCESS GRANTED' : status.type === 'warning' ? 'ACCESS DENIED' : 'ACCESS DENIED'}
+                  </h2>
                 </div>
-              )}
-              {status.details?.log?.scheduleSummary && (
-                <div className="schedule-summary" style={{ fontSize: '18px', marginTop: '20px' }}>
-                  <p><strong>Subject:</strong> {status.details.log.scheduleSummary.subjectName}</p>
-                  <p><strong>Time:</strong> {status.details.log.scheduleSummary.startTime} - {status.details.log.scheduleSummary.endTime}</p>
-                  <p><strong>Room:</strong> {status.details.log.scheduleSummary.room}</p>
+
+                {/* Modal Body */}
+                <div style={{ padding: '30px' }}>
+                  <div style={{
+                    textAlign: 'center',
+                    marginBottom: '20px',
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: '#333'
+                  }}>
+                    {status.message}
+                  </div>
+
+                  {/* Reasons */}
+                  {status.details?.reasons && status.details.reasons.length > 0 && (
+                    <div style={{ marginBottom: '20px' }}>
+                      <h4 style={{ margin: '0 0 10px 0', color: '#495057', fontSize: '16px' }}>Reasons:</h4>
+                      <ul style={{ padding: 0, listStyle: 'none' }}>
+                        {status.details.reasons.map((reason, index) => (
+                          <li key={index} style={{
+                            backgroundColor: '#f8f9fa',
+                            padding: '8px 12px',
+                            marginBottom: '5px',
+                            borderRadius: '6px',
+                            borderLeft: '3px solid #007bff',
+                            fontSize: '14px'
+                          }}>
+                            • {reason}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Schedule Summary */}
+                  {status.details?.log?.scheduleSummary && (
+                    <div style={{
+                      backgroundColor: '#e8f5e8',
+                      border: '1px solid #c8e6c9',
+                      borderRadius: '8px',
+                      padding: '15px',
+                      marginBottom: '20px'
+                    }}>
+                      <h4 style={{ margin: '0 0 10px 0', color: '#2e7d2e', fontSize: '16px' }}>📚 Schedule Details</h4>
+                      <div style={{ fontSize: '14px', color: '#2e7d2e' }}>
+                        <p style={{ margin: '0 0 5px 0' }}><strong>Subject:</strong> {status.details.log.scheduleSummary.subjectName}</p>
+                        <p style={{ margin: '0 0 5px 0' }}><strong>Time:</strong> {status.details.log.scheduleSummary.startTime} - {status.details.log.scheduleSummary.endTime}</p>
+                        <p style={{ margin: '0' }}><strong>Room:</strong> {status.details.log.scheduleSummary.room}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Close Button */}
+                  <div style={{ textAlign: 'center' }}>
+                    <button
+                      onClick={() => {
+                        setShowStatusModal(false);
+                        setStatus(null);
+                      }}
+                      style={{
+                        backgroundColor: '#007bff',
+                        color: 'white',
+                        border: 'none',
+                        padding: '12px 30px',
+                        borderRadius: '8px',
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(0,123,255,0.3)'
+                      }}
+                    >
+                      Continue
+                    </button>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
           )}
 
@@ -943,7 +1112,7 @@ const GateControlInterface = ({ user, onLogout }) => {
               <div style={{ textAlign: 'center', color: '#999', fontSize: '14px' }}>Loading logs...</div>
             ) : logs.length > 0 ? (
               <div style={{ backgroundColor: 'white', borderRadius: '6px', padding: '12px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <strong style={{ fontSize: '14px' }}>{logs[0].studentName || logs[0].studentId || 'Student'}</strong>
                     <span style={{
@@ -954,21 +1123,23 @@ const GateControlInterface = ({ user, onLogout }) => {
                       backgroundColor: logs[0].allowed ? '#d4edda' : '#f8d7da',
                       color: logs[0].allowed ? '#155724' : '#721c24'
                     }}>
-                      {logs[0].allowed ? 'APROVED' : 'DENIED'}
+                      {logs[0].allowed ? 'APPROVED' : 'DENIED'}
                     </span>
                   </div>
                   <span style={{ fontSize: '12px', color: '#6c757d' }}>
                     {new Date(logs[0].timestamp).toLocaleTimeString()}
                   </span>
                 </div>
-                <div style={{ fontSize: '13px', color: '#495057' }}>
-                  {logs[0].scanType === 'entry' ? 'Entry' : 'Exit'} at {logs[0].gateName || logs[0].gateId || 'Gate'}
-                </div>
-                {logs[0].campusName && (
-                  <div style={{ fontSize: '11px', color: '#6c757d', marginTop: '2px' }}>
-                    {logs[0].campusName}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+                  <div style={{ fontSize: '13px', color: '#495057' }}>
+                    {logs[0].scanType === 'entry' ? 'Entry' : 'Exit'} at {logs[0].gateName || logs[0].gateId || 'Gate'}
                   </div>
-                )}
+                  {logs[0].campusName && (
+                    <div style={{ fontSize: '11px', color: '#6c757d' }}>
+                      {logs[0].campusName}
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div style={{ textAlign: 'center', color: '#999', fontSize: '14px' }}>No recent logs available</div>

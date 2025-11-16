@@ -91,27 +91,10 @@ const AddScheduleModal = ({ onClose, onSubmit, students, campuses }) => {
     setSelectedStudents([]);
   };
 
-  // Update faculty list when selected students change (for better instructor suggestions)
+  // Always show all faculty in the instructor dropdown
   useEffect(() => {
-    if (selectedStudents.length > 0) {
-      const selectedStudentObjects = students.filter(s => selectedStudents.includes(s.userId));
-      const departments = selectedStudentObjects.map(s => s.studentDepartment).filter(Boolean);
-      const uniqueDepts = [...new Set(departments)];
-
-      if (uniqueDepts.length > 0) {
-        const filteredFaculty = allFaculty.filter(fac =>
-          fac.department && uniqueDepts.some(dept =>
-            fac.department.toLowerCase().includes(dept.toLowerCase())
-          )
-        );
-        setFaculty(filteredFaculty.length > 0 ? filteredFaculty : allFaculty);
-      } else {
-        setFaculty(allFaculty);
-      }
-    } else {
-      setFaculty(allFaculty);
-    }
-  }, [selectedStudents, students, allFaculty]);
+    setFaculty(allFaculty);
+  }, [allFaculty]);
 
   const validateForm = () => {
     const newErrors = {};
@@ -421,7 +404,7 @@ const AddScheduleModal = ({ onClose, onSubmit, students, campuses }) => {
                       style={{ marginRight: '10px' }}
                     />
                     <div>
-                      <strong>{student.firstName} {student.lastName}</strong> ({student.userId})
+                      <strong>{student.firstName} {student.lastName}</strong>
                       <br />
                       <small style={{ color: '#666' }}>
                         {student.studentDepartment} - {campuses.find(c => c.campusId === student.campusId)?.name || student.campusId}

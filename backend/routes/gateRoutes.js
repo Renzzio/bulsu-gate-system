@@ -35,9 +35,9 @@ router.get('/logs', authenticateToken, authorizeRole('admin', 'guard'), getAcces
 router.get('/violations', authenticateToken, authorizeRole('admin', 'guard'), getViolationsForUser);
 router.get('/reports', authenticateToken, authorizeRole('admin', 'guard'), getReportsForUser);
 
-// Campus Management - Admin only
+// Campus Management - Admin only (CRUD operations)
 router.post('/campuses', authenticateToken, authorizeRole('admin'), createCampus);
-router.get('/campuses', authenticateToken, authorizeRole('admin'), getCampuses);
+router.get('/campuses', authenticateToken, authorizeRole('admin', 'guard', 'security', 'security_guard', 'security_officer'), getCampuses);
 router.put('/campuses/:campusId', authenticateToken, authorizeRole('admin'), updateCampus);
 router.delete('/campuses/:campusId', authenticateToken, authorizeRole('admin'), deleteCampus);
 

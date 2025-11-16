@@ -1,13 +1,14 @@
 // frontend/src/components/AdminDashboard.js
 import React, { useState, useEffect } from 'react';
 import { QRCodeCanvas } from 'qrcode.react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import UserManagement from './UserManagement';
 import ScheduleManagement from './ScheduleManagement';
 import dashboardService from '../services/dashboardService';
 import gateService from '../services/gateService';
 import visitorService from '../services/visitorService';
 import { exportToCSV, exportToExcel, printData } from '../utils/exportUtils';
-import { Download, FileSpreadsheet, Printer, Filter, Calendar, Eye, Edit, Trash2, QrCode } from 'lucide-react';
+import { Download, FileSpreadsheet, Printer, Filter, Calendar, Eye, Edit, Trash2, QrCode, Users as UsersIcon, AlertTriangle } from 'lucide-react';
 import bulsuLogo from '../bulsuLogo.png';
 import './AdminDashboard.css';
 
@@ -147,6 +148,13 @@ function AdminDashboard({ user, onLogout }) {
     };
 
     fetchDashboardData();
+
+    // Real-time updates every 30 seconds
+    const interval = setInterval(() => {
+      fetchDashboardData();
+    }, 30000);
+
+    return () => clearInterval(interval);
   }, []);
 
 
@@ -320,10 +328,17 @@ function AdminDashboard({ user, onLogout }) {
     }
   };
 
-  // Filter access logs based on date range, scan type, and status
+  // Filter access logs based on date range, scan type, status, and campus
   const getFilteredAccessLogs = () => {
-    // Use campus-specific data if campus is selected, otherwise use global data
-    let filtered = [...(selectedCampus ? campusLogs : accessLogsData)];
+    let filtered = [...accessLogsData];
+
+    // Filter by campus if selected
+    if (selectedCampus) {
+      filtered = filtered.filter(log => {
+        const gateData = gatesData.find(gate => gate.gateId === log.gateId);
+        return gateData?.campusId === selectedCampus;
+      });
+    }
 
     // Filter by date range
     if (useLogDateRange && logStartDate && logEndDate) {
@@ -351,10 +366,17 @@ function AdminDashboard({ user, onLogout }) {
     return filtered;
   };
 
-  // Filter violations based on date range and scan type
+  // Filter violations based on date range, scan type, and campus
   const getFilteredViolations = () => {
-    // Use campus-specific data if campus is selected, otherwise use global data
-    let filtered = [...(selectedCampus ? campusViolations : violationsData)];
+    let filtered = [...violationsData];
+
+    // Filter by campus if selected
+    if (selectedCampus) {
+      filtered = filtered.filter(violation => {
+        const gateData = gatesData.find(gate => gate.gateId === violation.gateId);
+        return gateData?.campusId === selectedCampus;
+      });
+    }
 
     // Filter by date range
     if (useViolationDateRange && violationStartDate && violationEndDate) {
@@ -778,13 +800,9 @@ function AdminDashboard({ user, onLogout }) {
       return (
         <div className="logs-section">
           <div className="logs-header">
-            <div>
-              <h2>Access Logs {selectedCampus && `(${campusesData.find(c => c.campusId === selectedCampus)?.name || 'Unknown Campus'})`}</h2>
-              <p>Historical gate transactions for auditing purposes.</p>
-            </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button
-                className="outline-btn"
+                className="btn btn-secondary"
                 onClick={handleExportLogsCSV}
                 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 title="Export to CSV"
@@ -793,7 +811,7 @@ function AdminDashboard({ user, onLogout }) {
                 CSV
               </button>
               <button
-                className="outline-btn"
+                className="btn btn-secondary"
                 onClick={handleExportLogsExcel}
                 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 title="Export to Excel"
@@ -802,7 +820,7 @@ function AdminDashboard({ user, onLogout }) {
                 Excel
               </button>
               <button
-                className="outline-btn"
+                className="btn btn-secondary"
                 onClick={handlePrintLogs}
                 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 title="Print Logs"
@@ -918,17 +936,14 @@ function AdminDashboard({ user, onLogout }) {
             </div>
           </div>
 
-          <div className="logs-table">
+          <div className="um-table-container">
             {logsLoading ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                {selectedCampus ? `Loading ${campusesData.find(c => c.campusId === selectedCampus)?.name} logs...` : 'Loading access logs...'}
-              </div>
+              <div className="loading">{selectedCampus ? `Loading ${campusesData.find(c => c.campusId === selectedCampus)?.name} logs...` : 'Loading access logs...'}</div>
             ) : (
-              <table>
+              <table className="um-table" style={{ borderRadius: '8px', overflow: 'hidden', borderCollapse: 'separate', borderSpacing: '0' }}>
                 <thead>
                   <tr>
                     <th>Log ID</th>
-                    <th>User ID</th>
                     <th>User Name</th>
                     <th>User Type</th>
                     <th>Action</th>
@@ -948,7 +963,6 @@ function AdminDashboard({ user, onLogout }) {
                       return (
                         <tr key={log.logId || log.id || index}>
                           <td>{log.logId || log.id || 'N/A'}</td>
-                          <td>{log.userId || log.studentId || 'N/A'}</td>
                           <td>{log.userName || log.studentName || 'N/A'}</td>
                           <td>{log.userType || 'student'}</td>
                           <td>{log.scanType === 'entry' ? 'Entry' : 'Exit'}</td>
@@ -965,7 +979,7 @@ function AdminDashboard({ user, onLogout }) {
                     })
                   ) : (
                     <tr>
-                      <td colSpan="9" style={{ textAlign: 'center', color: '#999', padding: '40px' }}>
+                      <td colSpan="8" style={{ textAlign: 'center', color: '#999', padding: '40px' }}>
                         {selectedCampus ? `No access logs found for ${campusesData.find(c => c.campusId === selectedCampus)?.name}` : 'No access logs found matching the selected filters'}
                       </td>
                     </tr>
@@ -985,13 +999,10 @@ function AdminDashboard({ user, onLogout }) {
       return (
         <div className="logs-section">
           <div className="logs-header">
-            <div>
-              <h2>Violations Center {selectedCampus && `(${campusesData.find(c => c.campusId === selectedCampus)?.name || 'Unknown Campus'})`}</h2>
-              <p>Security violations and policy breaches across the campus.</p>
-            </div>
+
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button
-                className="outline-btn"
+                className="btn btn-secondary"
                 onClick={() => window.print()}
                 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 title="Print Violations Report"
@@ -1092,65 +1103,51 @@ function AdminDashboard({ user, onLogout }) {
             </div>
           </div>
 
-          <div className="violations-summary">
-            <div className="violation-stats">
-              <div className="stat-card">
-                <h3>{filteredViolations.length}</h3>
-                <p>Total Violations</p>
-              </div>
-              <div className="stat-card">
-                <h3>{filteredViolations.filter(v => v.userType === 'student').length}</h3>
-                <p>Student Violations</p>
-              </div>
-              <div className="stat-card">
-                <h3>{filteredViolations.filter(v => v.userType === 'visitor').length}</h3>
-                <p>Visitor Violations</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="logs-table">
+          <div className="um-table-container">
             {violationsLoading ? (
-              <div style={{ textAlign: 'center', padding: '40px', color: '#999' }}>
-                {selectedCampus ? `Loading ${campusesData.find(c => c.campusId === selectedCampus)?.name} violations...` : 'Loading violations...'}
-              </div>
+              <div className="loading">{selectedCampus ? `Loading ${campusesData.find(c => c.campusId === selectedCampus)?.name} violations...` : 'Loading violations...'}</div>
             ) : (
-              <table>
+              <table className="um-table">
                 <thead>
                   <tr>
                     <th>Violation ID</th>
-                    <th>User ID</th>
                     <th>User Name</th>
-                    <th>User Type</th>
                     <th>Violation Type</th>
                     <th>Action</th>
                     <th>Gate</th>
+                    <th>Campus</th>
                     <th>Description</th>
                     <th>Timestamp</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredViolations.length > 0 ? (
-                    filteredViolations.map((violation, index) => (
-                      <tr key={violation.violationId || index}>
-                        <td>{violation.violationId || 'N/A'}</td>
-                        <td>{violation.visitorId || violation.studentId || 'N/A'}</td>
-                        <td>{violation.visitorName || violation.studentName || 'N/A'}</td>
-                        <td>{violation.userType || 'unknown'}</td>
-                        <td>
-                          <span className="violation-type">
-                            {violation.violationType || 'Unknown'}
-                          </span>
-                        </td>
-                        <td>{violation.scanType === 'entry' ? 'Entry' : 'Exit'}</td>
-                        <td>{violation.gateId || 'Gate'}</td>
-                        <td>{violation.violationNotes || 'No description'}</td>
-                        <td>{new Date(violation.timestamp).toLocaleString()}</td>
-                      </tr>
-                    ))
+                    filteredViolations.map((violation, index) => {
+                      // Find gate name by looking up gate's details
+                      const gateData = gatesData.find(gate => gate.gateId === violation.gateId);
+                      const gateName = gateData?.name || violation.gateId || 'Unknown Gate';
+                      const campusName = gateData?.campusName || 'Unknown';
+
+                      return (
+                        <tr key={violation.violationId || index}>
+                          <td>{violation.violationId || 'N/A'}</td>
+                          <td>{violation.visitorName || violation.studentName || 'N/A'}</td>
+                          <td>
+                            <span className="violation-type">
+                              {violation.violationType || 'Unknown'}
+                            </span>
+                          </td>
+                          <td>{violation.scanType === 'entry' ? 'Entry' : 'Exit'}</td>
+                          <td>{gateName}</td>
+                          <td>{campusName}</td>
+                          <td>{violation.violationNotes || 'No description'}</td>
+                          <td>{new Date(violation.timestamp).toLocaleString()}</td>
+                        </tr>
+                      );
+                    })
                   ) : (
                     <tr>
-                      <td colSpan="9" style={{ textAlign: 'center', color: '#999', padding: '40px' }}>
+                      <td colSpan="8" style={{ textAlign: 'center', color: '#999', padding: '40px' }}>
                         {selectedCampus ? `No violations found for ${campusesData.find(c => c.campusId === selectedCampus)?.name} matching the selected filters` : 'No violations found matching the selected filters'}
                       </td>
                     </tr>
@@ -1167,13 +1164,10 @@ function AdminDashboard({ user, onLogout }) {
       return (
         <div className="visitors-section">
           <div className="visitors-header">
-            <div>
-              <h2>Visitor Management {selectedVisitorCampus && `(${campusesData.find(c => c.campusId === selectedVisitorCampus)?.name || 'Unknown Campus'})`}</h2>
-              <p>Manage visitor registrations and access credentials across campuses.</p>
-            </div>
+    
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button
-                className="primary-btn"
+                className="btn btn-primary"
                 onClick={handleAddVisitor}
                 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
               >
@@ -1290,13 +1284,13 @@ function AdminDashboard({ user, onLogout }) {
                           </td>
                           <td>
                             <div className="actions">
-                              <button className="view" title="View QR Code" onClick={() => handleViewVisitorQR(visitor)}>
+                              <button id="visitor-view-btn" className="view" title="View QR Code" onClick={() => handleViewVisitorQR(visitor)}>
                                 <QrCode size={16} />
                               </button>
-                              <button className="edit" title="Edit Visitor" onClick={() => handleEditVisitor(visitor)}>
+                              <button id="visitor-edit-btn" className="edit" title="Edit Visitor" onClick={() => handleEditVisitor(visitor)}>
                                 <Edit size={16} />
                               </button>
-                              <button className="delete" title="Delete Visitor" onClick={() => handleDeleteVisitor(visitor)}>
+                              <button id="visitor-delete-btn" className="delete" title="Delete Visitor" onClick={() => handleDeleteVisitor(visitor)}>
                                 <Trash2 size={16} />
                               </button>
                             </div>
@@ -1322,54 +1316,15 @@ function AdminDashboard({ user, onLogout }) {
     if (activeSection === 'campuses') {
       return (
         <div className="campuses-section">
-          <div className="campuses-header">
-            <div>
-              <h2>Campuses & Gates Management</h2>
-              <p>Manage campus locations and their associated gate access points.</p>
-            </div>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              <button
-                className="primary-btn"
-                onClick={() => setActiveSection('campuses')}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>location_on</span>
-                Manage Campuses
-              </button>
-              <button
-                className="primary-btn"
-                onClick={() => setActiveSection('gates')}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <span className="material-symbols-outlined" style={{ fontSize: '18px' }}>gate</span>
-                Manage Gates
-              </button>
-            </div>
-          </div>
+
 
           <div className="campuses-content">
-            {/* Campuses Summary */}
-            <div className="campus-stats">
-              <div className="stat-card">
-                <h3>{campusesData.length}</h3>
-                <p>Total Campuses</p>
-              </div>
-              <div className="stat-card">
-                <h3>{gatesData.length}</h3>
-                <p>Total Gates</p>
-              </div>
-              <div className="stat-card">
-                <h3>{campusesData.filter(c => c.status === 'active').length}</h3>
-                <p>Active Campuses</p>
-              </div>
-            </div>
-
             {/* Campuses Table */}
             <div className="admin-table-card">
               <div className="table-header">
                 <h3>Campus Locations</h3>
                 <button
-                  className="primary-btn"
+                  className="btn btn-primary"
                   onClick={handleAddCampus}
                 >
                   + Add Campus
@@ -1403,10 +1358,10 @@ function AdminDashboard({ user, onLogout }) {
                         </td>
                           <td>
                             <div className="actions">
-                              <button className="edit" title="Edit Campus" onClick={() => handleEditCampus(campus)}>
+                              <button id="campus-edit-btn" className="edit" title="Edit Campus" onClick={() => handleEditCampus(campus)}>
                                 <Edit size={16} />
                               </button>
-                              <button className="delete" title="Delete Campus" onClick={() => handleDeleteCampus(campus)}>
+                              <button id="campus-delete-btn" className="delete" title="Delete Campus" onClick={() => handleDeleteCampus(campus)}>
                                 <Trash2 size={16} />
                               </button>
                             </div>
@@ -1459,10 +1414,10 @@ function AdminDashboard({ user, onLogout }) {
                         </td>
                         <td>
                           <div className="actions">
-                            <button className="edit" title="Edit Gate" onClick={() => handleEditGate(gate)}>
+                            <button id="gate-edit-btn" className="edit" title="Edit Gate" onClick={() => handleEditGate(gate)}>
                               <Edit size={16} />
                             </button>
-                            <button className="delete" title="Delete Gate" onClick={() => handleDeleteGate(gate)}>
+                            <button id="gate-delete-btn" className="delete" title="Delete Gate" onClick={() => handleDeleteGate(gate)}>
                               <Trash2 size={16} />
                             </button>
                           </div>
@@ -1495,51 +1450,267 @@ function AdminDashboard({ user, onLogout }) {
       return <div className="section-placeholder"><p>{error}</p></div>;
     }
 
+    // Process real Firebase data for charts
+    const processFirebaseData = () => {
+      const today = new Date().toISOString().split('T')[0];
+      const allDates = [];
+      for (let i = 6; i >= 0; i--) { // Last 7 days including today
+        const date = new Date();
+        date.setDate(date.getDate() - i);
+        allDates.push(date.toISOString().split('T')[0]);
+      }
+
+      // Process entry trend data
+      const entryTrendMap = {};
+      const violationTrendMap = {};
+      allDates.forEach(date => {
+        entryTrendMap[date] = 0;
+        violationTrendMap[date] = 0;
+      });
+
+      // Process access logs for entries from weekly data
+      if (dashboardData?.weeklyAccessLogs) {
+        Object.keys(dashboardData.weeklyAccessLogs).forEach(date => {
+          if (allDates.includes(date)) {
+            const dateLogs = Object.values(dashboardData.weeklyAccessLogs[date]);
+            dateLogs.forEach(log => {
+              if (log.allowed === true && log.scanType === 'entry') {
+                entryTrendMap[date]++;
+              }
+            });
+          }
+        });
+      }
+
+      // Process violations from weekly data
+      if (dashboardData?.weeklyViolations) {
+        Object.keys(dashboardData.weeklyViolations).forEach(date => {
+          if (allDates.includes(date)) {
+            const dateViolations = Object.values(dashboardData.weeklyViolations[date]);
+            violationTrendMap[date] += dateViolations.length;
+          }
+        });
+      }
+
+      // Convert to chart data
+      const entryTrendData = allDates.map(date => ({
+        name: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        entries: entryTrendMap[date] || 0
+      }));
+
+      const violationTrendData = allDates.map(date => ({
+        name: new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        count: violationTrendMap[date] || 0
+      }));
+
+      // Process peak times for today using weekly data
+      const peakTimesMap = {};
+      const todayLogs = dashboardData?.weeklyAccessLogs?.[today] || {};
+      Object.values(todayLogs).forEach(log => {
+        if (log.allowed === true && log.scanType === 'entry') {
+          const timestamp = new Date(log.timestamp);
+          const hour = timestamp.getHours();
+          const hourLabel = hour === 0 ? '12:00 AM' :
+                           hour < 12 ? `${hour}:00 AM` :
+                           hour === 12 ? '12:00 PM' :
+                           `${hour - 12}:00 PM`;
+          peakTimesMap[hourLabel] = (peakTimesMap[hourLabel] || 0) + 1;
+        }
+      });
+
+      // Create hour labels for full day
+      const hourLabels = ['7:00 AM', '8:00 AM', '9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
+                         '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM', '6:00 PM'];
+
+      const peakTimesData = hourLabels.map(label => ({
+        time: label,
+        entries: peakTimesMap[label] || 0
+      }));
+
+      return {
+        entryTrendData,
+        violationTrendData,
+        peakTimesData
+      };
+    };
+
+    const { entryTrendData, violationTrendData, peakTimesData } = processFirebaseData();
+
+    const getTopAlerts = () => {
+      const allAlerts = dashboardData?.alerts ? Object.values(dashboardData.alerts) : [];
+      return allAlerts
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)) // Most recent first
+        .slice(0, 10); // Show top 10 alerts
+    };
+
     return (
-      <>
-        <div className="admin-cards">
-          {overviewStats.map((stat) => (
-            <div key={stat.label} className="card">
-              <span>{stat.label}</span>
-              <strong>{stat.value}</strong>
-              <small>{stat.trend}</small>
-            </div>
-          ))}
-        </div>
+      <div className="dashboard-analytics">
+        {/* Header */}
 
-        <div className="overview-grid">
-          <div className="chart-card">
-            <div>
-              <h3>Gate Flow Snapshot</h3>
-              <p>Entries vs exits across campus today.</p>
+
+        {/* Top Statistics Cards */}
+        <div className="stats-grid">
+          <div className="stat-card primary">
+            <div className="stat-icon">
+              <UsersIcon size={24} color="white" />
             </div>
-            <div className="mini-chart">
-              <div><span className="dot entries" />{dashboardData?.counts.entriesToday || 0} Entries</div>
-              <div><span className="dot exits" />{dashboardData?.counts.exitsToday || 0} Exits</div>
-              <div><span className="dot denied" />{dashboardData?.counts.deniedToday || 0} Denied</div>
+            <div className="stat-content">
+              <div className="stat-value">{dashboardData?.counts.entriesToday || 0}</div>
+              <div className="stat-label">Total Entries Today</div>
             </div>
           </div>
 
-          <div className="chart-card">
-            <div>
-              <h3>Live Alerts</h3>
-              <p>Recent violations and alerts triggered at the gates.</p>
+          <div className="stat-card danger">
+            <div className="stat-icon">
+              <AlertTriangle size={24} color="white" />
             </div>
-            <ul className="alert-list">
-              {dashboardData?.alerts && dashboardData.alerts.length > 0 ? (
-                dashboardData.alerts.slice(0, 3).map((alert, idx) => (
-                  <li key={idx}>
-                    <strong>{alert.type || 'Alert'}</strong>
-                    <span>{new Date(alert.timestamp).toLocaleTimeString()} · {alert.gate || 'Gate'}</span>
-                  </li>
-                ))
-              ) : (
-                <li><span>No recent alerts</span></li>
-              )}
-            </ul>
+            <div className="stat-content">
+              <div className="stat-value">{dashboardData?.counts.violationsToday || 0}</div>
+              <div className="stat-label">Total Violations Today</div>
+            </div>
           </div>
         </div>
-      </>
+
+        {/* Charts Grid */}
+        <div className="charts-grid">
+          {/* Entry Trend Chart */}
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3>Entry Trend Over Time</h3>
+              <p>Daily entry statistics for the last 7 days</p>
+            </div>
+            <div className="chart-container">
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={entryTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="entries"
+                    stroke="#007bff"
+                    strokeWidth={3}
+                    name="Entries"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Violation Trend Chart */}
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3>Violation Trend Over Time</h3>
+              <p>Daily violation statistics for the last 7 days</p>
+            </div>
+            <div className="chart-container">
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={violationTrendData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Legend />
+                  <Line
+                    type="monotone"
+                    dataKey="count"
+                    stroke="#dc3545"
+                    strokeWidth={3}
+                    name="Violations"
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Peak Entry Times Chart */}
+          <div className="chart-card">
+            <div className="chart-header">
+              <h3>Peak Entry Times</h3>
+              <p>Entry activity by hour (typical weekday)</p>
+            </div>
+            <div className="chart-container">
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={peakTimesData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="time" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="entries" fill="#28a745" name="Entries" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Real-time Alerts Feed */}
+          <div className="alerts-table-card" style={{ gridColumn: 'span 4', height: '500px' }}>
+            <div className="chart-header">
+              <h3>Real-time Alerts Feed</h3>
+              <p>Live security alerts and violations</p>
+            </div>
+            <div className="alerts-table-container" style={{ height: '420px', overflow: 'auto' }}>
+              <table className="um-table" style={{ borderRadius: '8px', overflow: 'hidden', borderCollapse: 'separate', borderSpacing: '0' }}>
+                <thead>
+                  <tr>
+                    <th>Type</th>
+                    <th>Person</th>
+                    <th>Campus</th>
+                    <th>Gate</th>
+                    <th>Violation Type</th>
+                    <th>Time</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getTopAlerts().length > 0 ? (
+                    getTopAlerts().map((alert, idx) => (
+                      <tr key={idx} style={{ backgroundColor: alert.severity === 'critical' ? '#fff5f5' : alert.severity === 'warning' ? '#fffbf0' : 'inherit' }}>
+                        <td>
+                          <span className="alert-type">{alert.type || 'Alert'}</span>
+                        </td>
+                        <td>
+                          <span>{alert.violator || 'Unknown'}</span>
+                        </td>
+                        <td>
+                          <span>{alert.campus || 'Unknown'}</span>
+                        </td>
+                        <td>
+                          <span>{alert.gate || 'Gate'}</span>
+                        </td>
+                        <td>
+                          <span className="violation-type">{alert.violationType || 'N/A'}</span>
+                        </td>
+                        <td style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>
+                          {new Date(alert.timestamp).toLocaleString()}
+                        </td>
+                        <td style={{ fontSize: '12px', maxWidth: '200px', wordWrap: 'break-word' }}>
+                          {alert.message || 'No additional details'}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="7" style={{ textAlign: 'center', color: '#999', padding: '40px' }}>
+                        <div className="no-alerts">
+                          <AlertTriangle size={32} color="#666" />
+                          <div>No recent alerts found</div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        {/* Last Updated Indicator */}
+        <div className="last-updated">
+          <small>Last updated: {new Date().toLocaleTimeString()}</small>
+        </div>
+      </div>
     );
   };
 
@@ -1575,7 +1746,7 @@ function AdminDashboard({ user, onLogout }) {
               <strong>{user.firstName} {user.lastName}</strong>
               <span>{user.role?.toUpperCase()}</span>
             </div>
-            <button className="outline-btn" onClick={onLogout}>Logout</button>
+            <button className="btn btn-secondary" onClick={onLogout}>Logout</button>
           </div>
         </header>
 
@@ -1590,7 +1761,7 @@ function AdminDashboard({ user, onLogout }) {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{editingCampus ? 'Edit Campus' : 'Add New Campus'}</h3>
-              <button className="modal-close" onClick={() => setShowCampusModal(false)}>×</button>
+              <button className="modal-close-btn" onClick={() => setShowCampusModal(false)}>✕</button>
             </div>
             <form onSubmit={handleCampusFormSubmit}>
               <div className="modal-body">
@@ -1649,11 +1820,8 @@ function AdminDashboard({ user, onLogout }) {
                   </div>
                 </div>
               </div>
-              <div className="modal-footer">
-                <button type="button" className="outline-btn" onClick={() => setShowCampusModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="primary-btn">
+              <div style={{ padding: '20px', borderTop: '1px solid #e0e0e0', display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="submit" className="btn btn-primary">
                   {editingCampus ? 'Update Campus' : 'Create Campus'}
                 </button>
               </div>
@@ -1668,7 +1836,7 @@ function AdminDashboard({ user, onLogout }) {
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{editingGate ? 'Edit Gate' : 'Add New Gate'}</h3>
-              <button className="modal-close" onClick={() => setShowGateModal(false)}>×</button>
+              <button className="modal-close-btn" onClick={() => setShowGateModal(false)}>✕</button>
             </div>
             <form onSubmit={handleGateFormSubmit}>
               <div className="modal-body">
@@ -1711,30 +1879,18 @@ function AdminDashboard({ user, onLogout }) {
                     rows="2"
                   />
                 </div>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="gateType">Gate Type</label>
-                    <select
-                      id="gateType"
-                      value={gateFormData.type}
-                      onChange={(e) => setGateFormData({...gateFormData, type: e.target.value})}
-                    >
-                      <option value="normal">Normal Gate</option>
-                      <option value="entrance">Entrance Only</option>
-                      <option value="exit">Exit Only</option>
-                      <option value="emergency">Emergency Gate</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="gateIpAddress">IP Address</label>
-                    <input
-                      id="gateIpAddress"
-                      type="text"
-                      value={gateFormData.ipAddress}
-                      onChange={(e) => setGateFormData({...gateFormData, ipAddress: e.target.value})}
-                      placeholder="192.168.1.100"
-                    />
-                  </div>
+                <div className="form-group">
+                  <label htmlFor="gateType">Gate Type</label>
+                  <select
+                    id="gateType"
+                    value={gateFormData.type}
+                    onChange={(e) => setGateFormData({...gateFormData, type: e.target.value})}
+                  >
+                    <option value="normal">Normal Gate</option>
+                    <option value="entrance">Entrance Only</option>
+                    <option value="exit">Exit Only</option>
+                    <option value="emergency">Emergency Gate</option>
+                  </select>
                 </div>
                 <div className="form-group">
                   <label htmlFor="gateLocation">Location Details</label>
@@ -1747,11 +1903,8 @@ function AdminDashboard({ user, onLogout }) {
                   />
                 </div>
               </div>
-              <div className="modal-footer">
-                <button type="button" className="outline-btn" onClick={() => setShowGateModal(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="primary-btn">
+              <div style={{ padding: '20px', borderTop: '1px solid #e0e0e0', display: 'flex', justifyContent: 'flex-end' }}>
+                <button type="submit" className="btn btn-primary">
                   {editingGate ? 'Update Gate' : 'Create Gate'}
                 </button>
               </div>

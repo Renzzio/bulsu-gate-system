@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import scheduleService from '../services/scheduleService';
 import { getUsersByRole, getAllUsers } from '../services/authService';
 import gateService from '../services/gateService';
+import { FileSpreadsheet, Calendar, List, Edit3, Trash2 } from 'lucide-react';
 import './ScheduleManagement.css';
 import AddScheduleModal from './AddScheduleModal';
 import EditScheduleModal from './EditScheduleModal';
@@ -233,10 +234,7 @@ const ScheduleManagement = ({ user }) => {
 
   return (
     <div className="schedule-management">
-      <div className="schedule-header">
-        <h2>Schedule Management</h2>
-        <p className="schedule-subtitle">Manage student class schedules</p>
-      </div>
+
 
       {error && <div className="alert alert-error">{error}</div>}
       {success && <div className="alert alert-success">{success}</div>}
@@ -311,16 +309,13 @@ const ScheduleManagement = ({ user }) => {
           className="btn btn-secondary"
           onClick={() => setShowExcelUpload(true)}
         >
-          📊 Import Excel
+          <FileSpreadsheet size={16} /> Import Excel
         </button>
       </div>
 
       {/* Student List Table */}
       <div className="students-container">
         <div className="students-info">
-          <span className="info-text">
-            {getFilteredStudents().length} student{getFilteredStudents().length !== 1 ? 's' : ''} found
-          </span>
         </div>
 
         {loading ? (
@@ -328,11 +323,11 @@ const ScheduleManagement = ({ user }) => {
         ) : getFilteredStudents().length === 0 ? (
           <div className="no-data">No students match the selected filters</div>
         ) : (
-          <table className="students-table">
+        <table className="students-table">
             <thead>
               <tr>
-                <th>Student ID</th>
                 <th>Name</th>
+                <th>Program</th>
                 <th>Department</th>
                 <th>Campus</th>
                 <th>Actions</th>
@@ -341,8 +336,8 @@ const ScheduleManagement = ({ user }) => {
             <tbody>
               {getFilteredStudents().map(student => (
                 <tr key={student.userId}>
-                  <td>{student.userId}</td>
                   <td>{student.firstName} {student.lastName}</td>
+                  <td>{student.program}</td>
                   <td>{student.studentDepartment}</td>
                   <td>{campuses.find(c => c.campusId === student.campusId)?.name || student.campusId}</td>
                   <td>
@@ -351,7 +346,7 @@ const ScheduleManagement = ({ user }) => {
                       onClick={() => handleViewStudentSchedule(student)}
                       title="View student schedule"
                     >
-                      📅 View Schedule
+                      <Calendar size={14} /> View Schedule
                     </button>
                   </td>
                 </tr>
@@ -479,7 +474,7 @@ const ScheduleManagement = ({ user }) => {
                 fontSize: '24px',
                 fontWeight: '600'
               }}>
-                📅 Weekly Schedule - {viewingStudent.firstName} {viewingStudent.lastName} ({viewingStudent.userId})
+                <Calendar size={20} style={{ marginRight: '8px' }} /> Weekly Schedule - {viewingStudent.firstName} {viewingStudent.lastName} ({viewingStudent.userId})
               </h3>
               <button
                 className="close-btn"
@@ -522,7 +517,7 @@ const ScheduleManagement = ({ user }) => {
                   marginBottom: '20px'
                 }}>
                   <h4 style={{ margin: 0, color: '#495057', fontSize: '20px', fontWeight: '600' }}>
-                    📋 Weekly Schedule Overview
+                    <List size={18} style={{ marginRight: '8px' }} /> Weekly Schedule Overview
                   </h4>
                 </div>
 
@@ -736,14 +731,14 @@ const ScheduleManagement = ({ user }) => {
                                   onClick={() => handleEditClick(schedule)}
                                   title="Edit schedule"
                                 >
-                                  ✏️ Edit
+                                  <Edit3 size={12} /> Edit
                                 </button>
                                 <button
                                   className="btn btn-danger btn-small"
                                   onClick={() => handleDeleteSchedule(schedule.scheduleId)}
                                   title="Delete schedule"
                                 >
-                                  🗑️ Delete
+                                  <Trash2 size={12} /> Delete
                                 </button>
                               </td>
                             </tr>

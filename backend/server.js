@@ -10,6 +10,7 @@ const scheduleRoutes = require('./routes/scheduleRoutes');
 const gateRoutes = require('./routes/gateRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const visitorRoutes = require('./routes/visitorRoutes');
+const campusRoutes = require('./routes/campusRoutes');
 
 const app = express();
 
@@ -28,6 +29,7 @@ app.use('/api/schedules', scheduleRoutes);
 app.use('/api/gate', gateRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/visitors', visitorRoutes);
+app.use('/api/campuses', campusRoutes);
 
 // Error handling middleware for multer and other errors
 app.use((err, req, res, next) => {

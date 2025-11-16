@@ -16,21 +16,32 @@ const login = async (req, res) => {
       });
     }
 
-    // Find user by username
+    // Find user by username or email
     const usersRef = db.ref('users');
-    const snapshot = await usersRef.orderByChild('username').equalTo(username).once('value');
-    
-    if (!snapshot.exists()) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials'
-      });
-    }
 
-    // Get user data
-    const userData = snapshot.val();
-    const userId = Object.keys(userData)[0];
-    const user = userData[userId];
+    // First try to find by username
+    let snapshot = await usersRef.orderByChild('username').equalTo(username).once('value');
+    let userData, userId, user;
+
+    if (snapshot.exists()) {
+      // Found by username
+      userData = snapshot.val();
+      userId = Object.keys(userData)[0];
+      user = userData[userId];
+    } else {
+      // Try to find by email
+      snapshot = await usersRef.orderByChild('email').equalTo(username).once('value');
+      if (snapshot.exists()) {
+        userData = snapshot.val();
+        userId = Object.keys(userData)[0];
+        user = userData[userId];
+      } else {
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid credentials'
+        });
+      }
+    }
 
     // Check if user is active
     if (user.status !== 'active') {

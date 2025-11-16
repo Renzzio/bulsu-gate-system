@@ -1,16 +1,16 @@
 .gate-interface {
   display: flex;
-  justify-content: center;
   flex-direction: column;
-  gap: var(--spacing-2xl);
-  padding: var(--spacing-2xl);
+  width: 100%;
+  min-height: calc(100vh - 120px); /* Take full available height */
+  padding: 0;
 }
 
 .gate-grid {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   width: 100%;
-  max-width: 1200px; /* Limit max width for better layout */
+  flex: 1;
 }
 
 
@@ -19,10 +19,14 @@
 .violation-panel,
 .logs-panel {
   background: var(--bg-white);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-2xl);
-  box-shadow: var(--shadow-lg);
-  border: 1px solid var(--card-border);
+  border-radius: 0;
+  margin: 0;
+  flex: 1;
+  min-height: calc(100vh - 160px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: none;
+  border: none;
 }
 
 .scanner-panel header,
@@ -42,54 +46,101 @@
 }
 
 .camera-toggle {
-  border: none;
-  background: var(--bulsu-gray);
-  color: var(--text-dark);
-  padding: var(--spacing-md) var(--spacing-lg);
-  border-radius: var(--radius-full);
+  border: 2px solid transparent;
+  background: linear-gradient(135deg, var(--bulsu-red) 0%, var(--bulsu-dark-red) 100%);
+  color: white;
+  padding: var(--spacing-md) var(--spacing-xl);
+  border-radius: 50px;
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
   transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(196, 30, 58, 0.3);
+  font-size: var(--font-size-base);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.camera-toggle:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(196, 30, 58, 0.4);
+}
+
+.camera-toggle:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(196, 30, 58, 0.3);
+}
+
+.camera-toggle.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .camera-toggle.active {
-  background: rgba(0, 188, 212, 0.15);
-  color: var(--accent-cyan);
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
 }
 
 .scanner-body {
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: var(--spacing-xl);
+  grid-template-columns: 1.5fr 2fr;
+  padding: var(--spacing-2xl);
+  flex: 1;
+  align-items: start;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1100px) {
+  .scanner-body {
+    grid-template-columns: 1.5fr 1fr;
+    gap: var(--spacing-xl);
+    padding: var(--spacing-xl);
+  }
+}
+
+@media (max-width: 768px) {
   .scanner-body {
     grid-template-columns: 1fr;
+    gap: var(--spacing-lg);
+    padding: var(--spacing-lg);
   }
 }
 
 .camera-preview {
-  border: 2px dashed var(--card-border);
+  border: 3px solid var(--card-border);
   border-radius: var(--radius-xl);
-  min-height: 300px;
+  min-height: 450px;
+  height: 55vh;
+  max-height: 600px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bulsu-gray);
+  background: linear-gradient(135deg, var(--bulsu-gray) 0%, rgba(248, 249, 250, 1) 100%);
   position: relative;
   overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  aspect-ratio: 1;
+}
+
+.camera-preview:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
 }
 
 .camera-preview.active {
   background: #0f172a;
-  border: 2px solid var(--accent-cyan);
+  border: 3px solid var(--accent-cyan);
+  box-shadow: 0 0 30px rgba(0, 188, 212, 0.3), 0 8px 30px rgba(0, 0, 0, 0.2);
+  transform: scale(1.01);
 }
 
 /* QR Scanner specific styles */
 #qr-reader {
   width: 100% !important;
   height: 100% !important;
+  position: relative !important;
 }
 
 #qr-reader__dashboard_section {
@@ -101,15 +152,56 @@
 }
 
 #qr-reader__scan_region {
-  border: 2px solid var(--accent-cyan) !important;
-  border-radius: 8px !important;
+  border: 3px solid rgba(255, 255, 255, 0.8) !important;
+  border-radius: 15px !important;
+  box-shadow: 0 0 0 3px var(--accent-cyan), 0 0 25px rgba(0, 188, 212, 0.5) !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  backdrop-filter: blur(1px) !important;
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  z-index: 10 !important;
+}
+
+#qr-reader__scan_region::before {
+  content: '' !important;
+  position: absolute !important;
+  top: -6px !important;
+  left: -6px !important;
+  right: -6px !important;
+  bottom: -6px !important;
+  border: 3px solid transparent !important;
+  border-radius: 18px !important;
+  background: linear-gradient(45deg, var(--accent-cyan), rgba(0, 188, 212, 0.6), transparent, transparent) !important;
+  z-index: -1 !important;
 }
 
 #qr-reader__scan_region video {
   width: 100% !important;
   height: 100% !important;
   object-fit: cover !important;
+  border-radius: 9px !important;
 }
+
+#qr-reader__scan_region::after {
+  content: '🎯 Position QR Code Here' !important;
+  position: absolute !important;
+  bottom: -40px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  color: white !important;
+  background: rgba(0, 0, 0, 0.8) !important;
+  padding: 8px 16px !important;
+  border-radius: 20px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3) !important;
+  z-index: 15 !important;
+}
+
+
 
 .camera-preview .laser {
   position: absolute;

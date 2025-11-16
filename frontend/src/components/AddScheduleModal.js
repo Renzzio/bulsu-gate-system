@@ -14,6 +14,7 @@ const AddScheduleModal = ({ onClose, onSubmit, students, campuses }) => {
     room: '',
     instructor: '',
     section: ''
+    
   });
 
   const [errors, setErrors] = useState({});

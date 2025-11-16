@@ -829,13 +829,19 @@ table tbody tr:hover {
 }
 
 .security-topbar .logout-button {
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 999px;
-  padding: 8px 18px;
-  color: #fff;
+   border: 1px solid var(--bulsu-red);
+  color: var(--bulsu-red);
+  padding: 10px 20px;
+  border-radius: 10px;
+  background: transparent;
+  font-weight: var(--font-weight-semibold);
   cursor: pointer;
-  font-weight: 600;
+  transition: all 0.3s ease;
+  height: 40px;
+}
+.security-topbar .logout-button:hover {
+  background: var(--bulsu-red);
+  color: white;
 }
 
 .security-content {

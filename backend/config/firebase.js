@@ -6,7 +6,7 @@ const serviceAccount = require('./serviceAccountKey.json');
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://bulsugatesystem-default-rtdb.firebaseio.com/' // Replace with your Firebase project URL
+  databaseURL: 'https://webappprojectfirebase-default-rtdb.firebaseio.com/' // Replace with your Firebase project URL
 });
 
 const db = admin.database();

@@ -283,9 +283,10 @@ const ScheduleManagement = ({ user }) => {
             onChange={(e) => setStudentSearch(e.target.value)}
           />
         </div>
-
+        <div className="filter-group" id='reset-student-group'>   
         <button
           className="btn btn-secondary"
+          id="reset-student-filters"
           onClick={() => {
             setStudentFilterCampus('');
             setStudentFilterDepartment('');
@@ -294,6 +295,7 @@ const ScheduleManagement = ({ user }) => {
         >
           Reset Filters
         </button>
+        </div> 
       </div>
 
       {/* Action Buttons */}

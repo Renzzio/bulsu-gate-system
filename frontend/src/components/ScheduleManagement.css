@@ -113,6 +113,13 @@
   box-shadow: var(--shadow-sm);
 }
 
+#reset-student-group {
+  display: flex;
+  justify-content: flex-end;
+  flex-direction: column;
+  padding-bottom: 3px;
+}
+
 .filter-group {
   display: flex;
   flex-direction: column;

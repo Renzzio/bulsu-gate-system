@@ -22,7 +22,6 @@
   left: 0;
   height: 100vh;
   width: 260px;
-  overflow-y: auto;
   z-index: 100;
 }
 

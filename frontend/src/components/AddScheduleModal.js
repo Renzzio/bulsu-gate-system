@@ -157,6 +157,8 @@ const AddScheduleModal = ({ onClose, onSubmit, students, campuses }) => {
     setLoading(true);
     try {
       // Submit schedule for each selected student
+      const results = { successful: [], failed: [] };
+
       for (const studentId of selectedStudents) {
         const selectedStudentObj = students.find(s => s.userId === studentId);
         const scheduleData = {
@@ -164,8 +166,23 @@ const AddScheduleModal = ({ onClose, onSubmit, students, campuses }) => {
           studentId,
           campusId: selectedStudentObj?.campusId
         };
-        await onSubmit(scheduleData);
+
+        const submitResult = await onSubmit(scheduleData);
+        if (submitResult.success) {
+          results.successful.push(selectedStudentObj);
+        } else {
+          results.failed.push({
+            student: selectedStudentObj,
+            error: submitResult.error || 'Failed to add schedule'
+          });
+        }
       }
+
+      // Show feedback modal with results
+      onClose({
+        ...results,
+        formData // Include the original form data
+      });
     } catch (error) {
       console.error('Error submitting form:', error);
     } finally {

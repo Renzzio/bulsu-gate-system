@@ -1,5 +1,5 @@
 // frontend/src/components/UserManagement.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as authService from '../services/authService';
 import gateService from '../services/gateService';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -26,6 +26,9 @@ function UserManagement({ role = 'admin' }) {
   const [showQR, setShowQR] = useState(null);
   const [campuses, setCampuses] = useState([]);
   const [gates, setGates] = useState([]);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Department options for faculty and students
   const departmentOptions = [
@@ -191,15 +194,14 @@ function UserManagement({ role = 'admin' }) {
 
         const response = await authService.createUser(userData);
 
-        setSuccess(`User created! UserID: ${response.user.userID} | Username: ${response.user.username} | Password: ${response.user.password}`);
-        setShowCredentials(response.user);
+        setShowCreateModal(true);
+        setShowForm(false);
         setFormData({
           firstName: '',
           lastName: '',
           email: '',
           role: 'student'
         });
-        setShowForm(false);
 
         // Refresh users list
         if (selectedRole) {
@@ -231,7 +233,8 @@ function UserManagement({ role = 'admin' }) {
       delete mappedData.facultyDepartment;
 
       await authService.updateUser(userId, mappedData);
-      setSuccess('User updated successfully');
+      setShowUpdateModal(true);
+      setShowForm(false);
       setEditingUser(null);
 
       if (selectedRole) {
@@ -255,7 +258,7 @@ function UserManagement({ role = 'admin' }) {
       setError('');
       setLoading(true);
       await authService.deleteUser(userId);
-      setSuccess('User deleted successfully');
+      setShowDeleteModal(true);
 
       if (selectedRole) {
         fetchUsersByRole(selectedRole);
@@ -380,6 +383,159 @@ function UserManagement({ role = 'admin' }) {
 
   return (
     <div className="user-management">
+
+      {/* Update Success Modal */}
+      {showUpdateModal && (
+        <div className="modal-overlay" onClick={() => setShowUpdateModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <div className="modal-header">
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', color: '#ffffffff', marginBottom: '-5px' }}>
+              </h3>
+            </div>
+
+            <div style={{ padding: '24px' }}>
+              <div style={{
+                backgroundColor: '#e8f5e8',
+                border: '2px solid #27ae60',
+                borderRadius: '12px',
+                padding: '24px',
+                marginBottom: '20px',
+                display: 'inline-block'
+              }}>
+                <Check size={48} color="#27ae60" />
+              </div>
+
+              <p style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: 'var(--text-dark)',
+                marginBottom: '8px'
+              }}>
+                User updated successfully!
+              </p>
+
+              <p style={{
+                fontSize: '14px',
+                color: 'var(--text-muted)',
+                marginBottom: '24px'
+              }}>
+                The user information has been updated in the system.
+              </p>
+
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowUpdateModal(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 auto' }}
+              >
+                <Check size={16} />
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Success Modal */}
+      {showCreateModal && (
+        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <div className="modal-header">
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', color: '#ffffffff', marginBottom: '-5px' }}>
+              </h3>
+            </div>
+
+            <div style={{ padding: '24px' }}>
+              <div style={{
+                backgroundColor: '#e8f5e8',
+                border: '2px solid #27ae60',
+                borderRadius: '12px',
+                padding: '24px',
+                marginBottom: '20px',
+                display: 'inline-block'
+              }}>
+                <UserPlus size={48} color="#27ae60" />
+              </div>
+
+              <p style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: 'var(--text-dark)',
+                marginBottom: '8px'
+              }}>
+                User created successfully!
+              </p>
+
+              <p style={{
+                fontSize: '14px',
+                color: 'var(--text-muted)',
+                marginBottom: '24px'
+              }}>
+                The new user has been added to the system.
+              </p>
+
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowCreateModal(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 auto' }}
+              >
+                <Check size={16} />
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Success Modal */}
+      {showDeleteModal && (
+        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <div className="modal-header">
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', color: '#ffffffff', marginBottom: '-5px' }}>
+              </h3>
+            </div>
+
+            <div style={{ padding: '24px' }}>
+              <div style={{
+                backgroundColor: '#ffeaea',
+                border: '2px solid #e74c3c',
+                borderRadius: '12px',
+                padding: '24px',
+                marginBottom: '20px',
+                display: 'inline-block'
+              }}>
+                <Trash2 size={48} color="#e74c3c" />
+              </div>
+
+              <p style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: 'var(--text-dark)',
+                marginBottom: '8px'
+              }}>
+                User deleted successfully!
+              </p>
+
+              <p style={{
+                fontSize: '14px',
+                color: 'var(--text-muted)',
+                marginBottom: '24px'
+              }}>
+                The user account has been permanently removed from the system.
+              </p>
+
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowDeleteModal(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 auto' }}
+              >
+                <Check size={16} />
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* User Information Display Modal */}
       {showCredentials && (
@@ -586,14 +742,7 @@ function UserManagement({ role = 'admin' }) {
               )}
 
               <div className="form-actions">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setShowCredentials(null)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: 'auto' }}
-                >
-                  <Check size={16} /> Close
-                </button>
+                
               </div>
             </div>
           </div>
@@ -640,17 +789,7 @@ function UserManagement({ role = 'admin' }) {
                     includeMargin={true}
                   />
 
-                  <div style={{
-                    backgroundColor: 'var(--bulsu-red)',
-                    color: 'white',
-                    padding: '8px 24px',
-                    borderRadius: '20px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    letterSpacing: '0.5px'
-                  }}>
-                    SCAN TO GAIN ENTRY
-                  </div>
+
                 </div>
               </div>
 
@@ -670,13 +809,16 @@ function UserManagement({ role = 'admin' }) {
                 <button
                   className="btn btn-primary"
                   onClick={() => {
-                    const canvas = document.querySelector('#qr-canvas');
-                    if (canvas) {
-                      const link = document.createElement('a');
-                      link.download = `qr-${showQR.userId}.png`;
-                      link.href = canvas.toDataURL();
-                      link.click();
-                    }
+                    // Use timeout to ensure QR code is rendered
+                    setTimeout(() => {
+                      const canvas = document.querySelector('canvas');
+                      if (canvas) {
+                        const link = document.createElement('a');
+                        link.download = `qr-${showQR.userId}.png`;
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                      }
+                    }, 100);
                   }}
                   style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
                 >
@@ -684,15 +826,7 @@ function UserManagement({ role = 'admin' }) {
                   Save QR Code
                 </button>
 
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => setShowQR(null)}
-                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                >
-                  <QrCode size={16} />
-                  Close
-                </button>
+         
               </div>
             </div>
           </div>
@@ -785,7 +919,6 @@ function UserManagement({ role = 'admin' }) {
 
             {/* Alert Messages inside modal */}
             {error && <div className="alert alert-error">{error}</div>}
-            {success && <div className="alert alert-success">{success}</div>}
 
             <form onSubmit={handleCreateUser}>
               <div className="form-row">
@@ -832,6 +965,7 @@ function UserManagement({ role = 'admin' }) {
                     value={formData.role}
                     onChange={handleInputChange}
                     required
+                    disabled={!!editingUser}
                   >
                     <option value="student">Student</option>
                     <option value="faculty">Faculty/Staff</option>
@@ -868,7 +1002,7 @@ function UserManagement({ role = 'admin' }) {
                 <div className="form-group">
                   <label>Phone Number</label>
                   <input
-                    type="tel"
+                    type="number"
                     name="phoneNumber"
                     value={formData.phoneNumber}
                     onChange={handleInputChange}
@@ -1041,30 +1175,8 @@ function UserManagement({ role = 'admin' }) {
                 />
               </div>
 
-              <p className="form-note" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {editingUser ? (
-                  <>
-                    <FileText size={16} /> Update user information
-                  </>
-                ) : (
-                  <>
-                    <Info size={16} /> Login credentials will be auto-generated and displayed after creation.
-                  </>
-                )}
-              </p>
-
               <div className="form-actions">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingUser(null);
-                    resetFormData();
-                  }}
-                >
-                  <X size={16} /> Cancel
-                </button>
+
                 <button type="submit" className="btn btn-success" disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {loading ? (
                     editingUser ? 'Updating...' : 'Creating...'
@@ -1100,6 +1212,7 @@ function UserManagement({ role = 'admin' }) {
                 <th>Username</th>
                 <th>Email</th>
                 <th>Department</th>
+                <th>Campus</th>
                 <th>Role</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -1120,6 +1233,9 @@ function UserManagement({ role = 'admin' }) {
                       (user.studentDepartment || 'N/A') :
                       '-'
                     }
+                  </td>
+                  <td>
+                    {user.campusId ? (campuses.find(campus => campus.campusId === user.campusId)?.name || user.campusId) : 'N/A'}
                   </td>
                   <td>
                     <span

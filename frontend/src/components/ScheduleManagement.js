@@ -9,6 +9,7 @@ import AddScheduleModal from './AddScheduleModal';
 import EditScheduleModal from './EditScheduleModal';
 import ScheduleTable from './ScheduleTable';
 import ScheduleExcelUpload from './ScheduleExcelUpload';
+import ScheduleFeedbackModal from './ScheduleFeedbackModal';
 
 
 
@@ -22,6 +23,9 @@ const ScheduleManagement = ({ user }) => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showExcelUpload, setShowExcelUpload] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackResults, setFeedbackResults] = useState(null);
+  const [feedbackScheduleData, setFeedbackScheduleData] = useState(null);
   const [editingSchedule, setEditingSchedule] = useState(null);
   const [filterDay, setFilterDay] = useState('');
   const [searchSubject, setSearchSubject] = useState('');
@@ -124,6 +128,55 @@ const ScheduleManagement = ({ user }) => {
     }
   };
 
+  // Separate function for batch schedule addition that doesn't affect UI state
+  const addScheduleForStudent = async (scheduleData) => {
+    try {
+      const response = await scheduleService.addSchedule(scheduleData);
+      if (response.success) {
+        return { success: true };
+      } else {
+        return { success: false, error: response.message || 'Failed to add schedule' };
+      }
+    } catch (err) {
+      return { success: false, error: err.message || 'Failed to add schedule' };
+    }
+  };
+
+  const handleAddScheduleWithResults = async (results) => {
+    // Store the original form data (not the individual student schedule data)
+    // We need to construct the schedule data from the results
+    const formData = results.formData || {
+      subjectCode: 'Unknown',
+      subjectName: 'Unknown Schedule',
+      dayOfWeek: 'Unknown',
+      startTime: '00:00',
+      endTime: '00:00',
+      room: 'Unknown',
+      instructor: 'Unknown Instructor'
+    };
+
+    setFeedbackResults(results);
+    setFeedbackScheduleData(formData);
+    setShowFeedbackModal(true);
+    setShowAddModal(false);
+
+    // Refresh schedules for students who successfully got schedules
+    if (results.successful && results.successful.length > 0) {
+      // Update the schedules for students who now have new schedules
+      results.successful.forEach(student => {
+        if (showStudentSchedules && viewingStudent?.userId === student.userId) {
+          loadSchedules(student.userId);
+        }
+      });
+    }
+  };
+
+  const handleFeedbackModalClose = () => {
+    setShowFeedbackModal(false);
+    setFeedbackResults(null);
+    setFeedbackScheduleData(null);
+  };
+
   const handleEditSchedule = async (scheduleData) => {
     try {
       // Use viewingStudent ID if in modal, otherwise use selectedStudent
@@ -173,14 +226,69 @@ const ScheduleManagement = ({ user }) => {
 
   const handleExcelUploadSuccess = (results) => {
     setShowExcelUpload(false);
-    setSuccess(`Successfully imported ${results.successful.length} schedules`);
-    loadSchedules(selectedStudent);
-    setTimeout(() => setSuccess(''), 3000);
+    // Transform Excel results to match feedback modal format
+    const feedbackResults = {
+      successful: results.successful.map(item => ({
+        firstName: item.student.firstName,
+        lastName: `${item.student.lastName} - ${item.subjectCode}`,
+        userId: item.student.userId
+      })),
+      failed: results.failed.map(item => ({
+        student: {
+          firstName: item.student.firstName,
+          lastName: `${item.student.lastName} - ${item.subjectCode} (Row ${item.row})`,
+          userId: item.student.userId
+        },
+        error: item.errors.join(', '),
+        subjectCode: item.subjectCode
+      }))
+    };
+
+    const formData = {
+      subjectCode: 'Excel Import',
+      subjectName: 'Multiple Schedules Import',
+      dayOfWeek: 'Various',
+      startTime: 'N/A',
+      endTime: 'N/A',
+      room: 'Various',
+      instructor: 'Various'
+    };
+
+    setFeedbackResults(feedbackResults);
+    setFeedbackScheduleData(formData);
+    setShowFeedbackModal(true);
+
+    // Refresh schedules if we're viewing a student
+    if (selectedStudent) {
+      loadSchedules(selectedStudent);
+    }
   };
 
   const handleExcelUploadError = (err) => {
-    setError(err.message || 'Failed to import schedules');
-    setTimeout(() => setError(''), 5000);
+    const feedbackResults = {
+      successful: [],
+      failed: [{
+        student: {
+          firstName: 'Excel',
+          lastName: 'Import',
+          userId: 'Global'
+        },
+        error: err.message || 'Failed to import schedules'
+      }]
+    };
+
+    setFeedbackResults(feedbackResults);
+    setFeedbackScheduleData({
+      subjectCode: 'Excel Import',
+      subjectName: 'Multiple Schedules Import',
+      dayOfWeek: 'Various',
+      startTime: 'N/A',
+      endTime: 'N/A',
+      room: 'Various',
+      instructor: 'Various'
+    });
+    setShowFeedbackModal(true);
+    setShowExcelUpload(false);
   };
 
   // Get unique departments from students
@@ -373,8 +481,16 @@ const ScheduleManagement = ({ user }) => {
         }}>
           <div style={{ zIndex: 2501 }}>
             <AddScheduleModal
-              onClose={() => setShowAddModal(false)}
-              onSubmit={handleAddSchedule}
+              onClose={(results) => {
+                if (results && (results.successful || results.failed)) {
+                  // If results are provided, show feedback modal
+                  handleAddScheduleWithResults(results);
+                } else {
+                  // Otherwise just close the modal
+                  setShowAddModal(false);
+                }
+              }}
+              onSubmit={addScheduleForStudent}
               students={students}
               campuses={campuses}
             />
@@ -729,12 +845,14 @@ const ScheduleManagement = ({ user }) => {
                               <td>{schedule.instructor}</td>
                               <td>
                                 <button
+                                  style={{ marginRight: '10px' }}
                                   className="btn btn-secondary btn-small"
                                   onClick={() => handleEditClick(schedule)}
                                   title="Edit schedule"
                                 >
                                   <Edit3 size={12} /> Edit
                                 </button>
+
                                 <button
                                   className="btn btn-danger btn-small"
                                   onClick={() => handleDeleteSchedule(schedule.scheduleId)}
@@ -755,6 +873,14 @@ const ScheduleManagement = ({ user }) => {
           </div>
         </div>
       )}
+
+      {/* Feedback Modal for Schedule Assignment Results */}
+      <ScheduleFeedbackModal
+        isOpen={showFeedbackModal}
+        onClose={handleFeedbackModalClose}
+        results={feedbackResults}
+        scheduleData={feedbackScheduleData}
+      />
     </div>
   );
 };

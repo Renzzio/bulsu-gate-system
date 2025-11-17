@@ -124,6 +124,7 @@ const ScheduleExcelUpload = ({ students = [], campuses = [], onSuccess, onError 
     try {
       // Upload schedules for each selected student
       for (const studentId of selectedStudents) {
+        const student = students.find(s => s.userId === studentId);
         const formData = new FormData();
         formData.append('file', file);
 
@@ -131,19 +132,31 @@ const ScheduleExcelUpload = ({ students = [], campuses = [], onSuccess, onError 
           const response = await scheduleService.importSchedulesFromExcel(studentId, formData);
           if (response.success) {
             const studentResults = response.results;
-            results.successful.push(...studentResults.successful);
-            results.failed.push(...studentResults.failed);
+            // Add student info to each result
+            const successfulWithStudent = studentResults.successful.map(item => ({
+              ...item,
+              student: student
+            }));
+            const failedWithStudent = studentResults.failed.map(item => ({
+              ...item,
+              student: student
+            }));
+
+            results.successful.push(...successfulWithStudent);
+            results.failed.push(...failedWithStudent);
             results.totalRows += studentResults.totalRows;
           } else {
             results.failed.push({
               row: 'N/A',
-              errors: [`Failed for student ${studentId}: ${response.message}`]
+              errors: [`Failed for student ${studentId}: ${response.message}`],
+              student: student
             });
           }
         } catch (error) {
           results.failed.push({
             row: 'N/A',
-            errors: [`Failed for student ${studentId}: ${error.message}`]
+            errors: [`Failed for student ${studentId}: ${error.message}`],
+            student: student
           });
         }
       }

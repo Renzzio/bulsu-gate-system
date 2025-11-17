@@ -1141,7 +1141,7 @@ function VisitorModal({ onClose, onCreateVisitor }) {
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500', textAlign: 'left' }}>Phone Number *</label>
               <input
-                type="tel"
+                type="number"
                 name="contact"
                 required
                 value={formData.contact}

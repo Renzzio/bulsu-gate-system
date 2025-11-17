@@ -491,6 +491,36 @@ function AdminDashboard({ user, onLogout }) {
     printData(title, data, headers);
   };
 
+  const handlePrintViolations = () => {
+    const filteredViolations = getFilteredViolations();
+    if (filteredViolations.length === 0) {
+      alert('No violations to print');
+      return;
+    }
+    const headers = ['Violation ID', 'User Name', 'Violation Type', 'Action', 'Gate', 'Campus', 'Description', 'Timestamp'];
+    const data = filteredViolations.map(violation => {
+      // Find gate name by looking up gate's details
+      const gateData = gatesData.find(gate => gate.gateId === violation.gateId);
+      const gateName = gateData?.name || violation.gateId || 'Unknown Gate';
+      const campusName = gateData?.campusName || 'Unknown';
+
+      return [
+        violation.violationId || 'N/A',
+        violation.visitorName || violation.studentName || 'N/A',
+        violation.violationType || 'Unknown',
+        violation.scanType === 'entry' ? 'Entry' : 'Exit',
+        gateName,
+        campusName,
+        violation.violationNotes || 'No description',
+        new Date(violation.timestamp).toLocaleString()
+      ];
+    });
+    const title = useViolationDateRange && violationStartDate && violationEndDate
+      ? `Violations Report (${violationStartDate} to ${violationEndDate})`
+      : 'Violations Report';
+    printData(title, data, headers);
+  };
+
   // Campus CRUD handlers
   const handleAddCampus = () => {
     setCampusFormData({
@@ -966,7 +996,7 @@ function AdminDashboard({ user, onLogout }) {
                           <td>{log.userName || log.studentName || 'N/A'}</td>
                           <td>{log.userType || 'student'}</td>
                           <td>{log.scanType === 'entry' ? 'Entry' : 'Exit'}</td>
-                          <td>{log.gateId || 'Gate'}</td>
+                          <td>{gateData?.name || log.gateId || 'Unknown'}</td>
                           <td>{campusName}</td>
                           <td>
                             <span className={`tag ${log.allowed ? 'success' : 'danger'}`}>
@@ -1003,7 +1033,7 @@ function AdminDashboard({ user, onLogout }) {
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <button
                 className="btn btn-secondary"
-                onClick={() => window.print()}
+                onClick={handlePrintViolations}
                 style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                 title="Print Violations Report"
               >
@@ -1719,7 +1749,6 @@ function AdminDashboard({ user, onLogout }) {
       <aside className="admin-sidebar">
         <div className="logo">
           <img src={bulsuLogo} alt="BulSU Logo" />
-          <span>BulSU Gate System</span>
         </div>
         <nav>
           {sidebarItems.map((item) => (
@@ -1812,7 +1841,7 @@ function AdminDashboard({ user, onLogout }) {
                     <label htmlFor="contactNumber">Contact Number</label>
                     <input
                       id="contactNumber"
-                      type="tel"
+                      type="number"
                       value={campusFormData.contactNumber}
                       onChange={(e) => setCampusFormData({...campusFormData, contactNumber: e.target.value})}
                       placeholder="Contact phone number"
@@ -1945,7 +1974,7 @@ function AdminDashboard({ user, onLogout }) {
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', marginBottom: '4px', fontWeight: '500' }}>Phone Number *</label>
               <input
-                type="tel"
+                type="number"
                 name="contact"
                 required
                 value={visitorFormData.contact}
@@ -2083,14 +2112,7 @@ function AdminDashboard({ user, onLogout }) {
             />
           </div>
         </div>
-        <div className="modal-footer">
-          <button
-            type="button"
-            className="outline-btn"
-            onClick={() => setShowVisitorModal(false)}
-          >
-            Cancel
-          </button>
+        <div className="modal-footer" style={{ paddingTop: '5px',borderTop: '1px solid #e0e0e0', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
           <button
             type="submit"
             className="primary-btn"
@@ -2228,18 +2250,7 @@ function QRDisplayModal({ qrData, onClose }) {
               </div>
             </div>
 
-            <div style={{
-              backgroundColor: '#007bff',
-              color: 'white',
-              padding: '8px 24px',
-              borderRadius: '20px',
-              fontSize: '14px',
-              fontWeight: '600',
-              textAlign: 'center',
-              letterSpacing: '0.5px'
-            }}>
-              SCAN TO GAIN ENTRY
-            </div>
+           
           </div>
         </div>
 

@@ -469,7 +469,7 @@ function FacultyDashboard({ user, onLogout }) {
                   </label>
                   {isEditingProfile ? (
                     <input
-                      type="tel"
+                      type="number"
                       value={profileFormData.phoneNumber}
                       onChange={(e) => setProfileFormData({...profileFormData, phoneNumber: e.target.value})}
                       placeholder="Enter phone number"

@@ -11,6 +11,9 @@ const {
 /**
  * Handle a gate scan attempt (entry/exit)
  */
+/**
+ * Handle a gate scan attempt (entry/exit)
+ */
 const scanStudent = async (req, res) => {
   try {
     const {
@@ -109,43 +112,43 @@ const scanStudent = async (req, res) => {
       }, dateKey);
     }
 
-    // This createAlert function just logs to your /alerts table
-    if (!allowed || violationRecorded) {
-      await createAlert({
-        studentId: studentProfile.userId, // Log alert against the main user ID
-        studentName: logData.studentName,
-        gateId: logData.gateId,
-        campusId: logData.campusId,
-        timestamp,
-        severity: violationRecorded ? 'warning' : 'info',
-        message: violationRecorded ?
-          `Violation recorded: ${violationType}` :
-          `Access denied for ${studentId}: ${reasons.join(', ')}`
-      });
-    }
-
-    // --- === NEW NOTIFICATION LOGIC === ---
-    // After all logic is done, determine the notification message
+    // --- === UPDATED NOTIFICATION & ALERT LOGIC === ---
     
     let notifTitle = "";
     let notifBody = "";
+    let alertSeverity = "info"; // Default severity
 
     if (allowed) {
         notifTitle = (scanType === 'entry') ? "Entry Approved" : "Exit Recorded";
         notifBody = `Your ${scanType} at ${logData.gateName} was successful.`;
+        alertSeverity = "success"; // Set severity for "Approved"
+        
         if (violationRecorded) {
             notifTitle = "Access Approved (with Violation)";
             notifBody = `Violation noted: ${violationType}. ${violationNotes || ''}`;
+            alertSeverity = "warning"; // Set severity for "Violation"
         }
     } else {
         notifTitle = "Entry Denied";
         notifBody = `Access was denied. Reason: ${reasons.join(', ')}`;
+        alertSeverity = "error"; // Set severity for "Denied"
     }
+
+    // 1. ALWAYS create the alert log to show in the app's notification tab
+    await createAlert({
+      studentId: studentProfile.userId, // The Firebase Key
+      studentName: logData.studentName,
+      gateId: logData.gateId,
+      campusId: logData.campusId,
+      timestamp: timestamp, 
+      severity: alertSeverity,
+      message: notifTitle 
+    });
     
-    // Call the helper function to send the push notification
-    // We use studentProfile.userId (the Firebase key) to find the token
+    // 2. ALWAYS send the push notification pop-up
     await sendNotificationToStudent(studentProfile.userId, notifTitle, notifBody);
-    // --- === END OF NEW NOTIFICATION LOGIC === ---
+    
+    // --- === END OF UPDATED LOGIC === ---
 
     res.json({
       success: true,
@@ -163,7 +166,7 @@ const scanStudent = async (req, res) => {
       message: 'Server error while processing gate scan'
     });
   }
-};
+}; //END OF NOTIFICATION UPDATED BEFORE const getAccessLogsForUser
 
 /**
  * Return access logs for a given time range - filtered by user's campus for guards
@@ -246,7 +249,7 @@ const getViolationsForUser = async (req, res) => {
       message: 'Server error while fetching violations'
     });
   }
-};
+}; 
 
 /**
  * Return violation records for a given time range (unfiltered - for backwards compatibility)

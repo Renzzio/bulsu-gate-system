@@ -609,6 +609,47 @@ const getGatesByCampus = async (req, res) => {
   }
 };
 
+const toggleGateStatus = async (req, res) => {
+  try {
+    const { gateId } = req.params;
+
+    // Get current gate status
+    const gateSnapshot = await db.ref(`gates/${gateId}`).once('value');
+    if (!gateSnapshot.exists()) {
+      return res.status(404).json({
+        success: false,
+        message: 'Gate not found'
+      });
+    }
+
+    const gateData = gateSnapshot.val();
+    const newStatus = gateData.status === 'active' ? 'inactive' : 'active';
+
+    // Update gate status
+    await db.ref(`gates/${gateId}`).update({
+      status: newStatus,
+      updatedAt: new Date().toISOString(),
+      updatedBy: req.user?.userId || 'system'
+    });
+
+    res.json({
+      success: true,
+      message: `Gate ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`,
+      gate: {
+        gateId,
+        status: newStatus,
+        name: gateData.name
+      }
+    });
+  } catch (error) {
+    console.error('Toggle gate status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while toggling gate status'
+    });
+  }
+};
+
 const formatDateKey = (date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -628,5 +669,6 @@ module.exports = {
   deleteGate,
   getGatesByCampus,
   getCampusScopedLogs,
-  getCampusScopedViolations
+  getCampusScopedViolations,
+  toggleGateStatus
 };

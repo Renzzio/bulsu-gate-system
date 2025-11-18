@@ -637,7 +637,7 @@ function SecurityDashboard({ user, onLogout }) {
               <h1>{sidebarItems.find(item => item.id === activeSection)?.label || 'Gate Scanner'}</h1>
               <p>{activeSection === 'scanner'
                 ? 'Dashboard overview and statistics'
-                : activeSection === 'visitors' ? 'Module management' : 'Account settings'}</p>
+                : activeSection === 'visitors' ? 'Visitor management and QR code generation' : 'Account settings'}</p>
             </div>
             <div className="topbar-actions">
               <div className="topbar-user">
@@ -1421,18 +1421,7 @@ function QRDisplayModal({ qrData, onClose }) {
               </div>
             </div>
 
-            <div style={{
-              backgroundColor: '#007bff',
-              color: 'white',
-              padding: '8px 24px',
-              borderRadius: '20px',
-              fontSize: '14px',
-              fontWeight: '600',
-              textAlign: 'center',
-              letterSpacing: '0.5px'
-            }}>
-              SCAN TO GAIN ENTRY
-            </div>
+   
           </div>
         </div>
 
@@ -1456,44 +1445,8 @@ function QRDisplayModal({ qrData, onClose }) {
         </div>
 
         <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <button
-            style={{
-              padding: '10px 16px',
-              backgroundColor: '#28a745',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-            onClick={handleSaveQR}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>phone_android</span>
-            Save QR Code
-          </button>
-          <button
-            style={{
-              padding: '10px 16px',
-              backgroundColor: '#007bff',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-            onClick={() => window.print()}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '16px' }}>print</span>
-            Print
-          </button>
+          
+         
           <button
             style={{
               padding: '10px 16px',
@@ -1514,7 +1467,5 @@ function QRDisplayModal({ qrData, onClose }) {
     </div>
   );
 }
-
-
 
 export default SecurityDashboard;

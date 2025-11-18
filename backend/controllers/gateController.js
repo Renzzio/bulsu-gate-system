@@ -21,7 +21,8 @@ const scanStudent = async (req, res) => {
       scanType,
       gateId,
       violationType,
-      violationNotes
+      violationNotes,
+      guardDecision // 'approve' or 'deny' - indicates guard making final decision
     } = req.body;
 
     if (!studentId || !scanType) {
@@ -54,14 +55,47 @@ const scanStudent = async (req, res) => {
     const hasScheduleToday = schedulesToday.length > 0;
     const activeSchedule = await getActiveScheduleNow(studentId);
 
-    let allowed = true; // Allow all scans by default
-    const reasons = [];
+    // Get gate and campus information early
+    const gateInfo = await findGateInfo(gateId || studentProfile.assignedGate || 'Main Gate');
+    const campusInfo = await findCampusInfo(gateInfo?.campusId);
 
-    // Only restrict entries for students without schedule
-    if (scanType === 'entry' && !hasScheduleToday) {
-      allowed = false;
-      reasons.push('No scheduled classes for today');
+    let allowed = true; // Allow all scans by default
+    const reasons = [];
+
+    // Restrict entries for students without schedule
+    if (scanType === 'entry' && !hasScheduleToday) {
+      allowed = false;
+      reasons.push('No scheduled classes for today');
     }
+
+    // Handle guard decisions for exits during class
+    if (scanType === 'exit' && activeSchedule && guardDecision) {
+      if (guardDecision === 'approve') {
+        allowed = true;
+        reasons.push('Exit approved by guard during class time');
+      } else if (guardDecision === 'deny') {
+        allowed = false;
+        reasons.push('Exit denied by guard during class time');
+      }
+    } else if (scanType === 'exit' && activeSchedule && !guardDecision) {
+      // Student has an ongoing class - guard approval needed
+      // RETURN EARLY WITHOUT CREATING LOGS - approval needed first
+      return res.json({
+        success: true,
+        message: 'Exit approval required - guard will make final decision',
+        allowed: false, // Initially false, guard will decide
+        reasons: ['Student has ongoing class - guard approval required'],
+        exitApprovalNeeded: true,
+        log: {
+          studentId,
+          studentName: `${studentProfile.firstName || ''} ${studentProfile.lastName || ''}`.trim(),
+          scanType,
+          gateId: gateId || studentProfile.assignedGate || 'Main Gate',
+          campusName: campusInfo?.name || 'Unknown Campus',
+          scheduleSummary: activeSchedule ? formatScheduleSummary(activeSchedule) : null
+        }
+      });
+    }
 
     const violationRecorded = Boolean(violationType);
     if (violationRecorded) {
@@ -71,10 +105,6 @@ const scanStudent = async (req, res) => {
     const logId = uuidv4();
     const timestamp = now.toISOString();
     const dateKey = formatDateKey(now);
-
-    // Get gate information to include campus details
-    const gateInfo = await findGateInfo(gateId || studentProfile.assignedGate || 'Main Gate');
-    const campusInfo = await findCampusInfo(gateInfo?.campusId);
 
     const logData = {
       logId,

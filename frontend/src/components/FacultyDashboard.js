@@ -938,15 +938,21 @@ function FacultyDashboard({ user, onLogout }) {
             No students match your search and filter criteria.
           </div>
         ) : (
-          <table className="students-table" style={{
+          <div style={{
             width: '100%',
-            borderCollapse: 'collapse',
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            overflow: 'hidden',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            tableLayout: 'fixed'
+            overflowX: 'auto',
+            scrollbarWidth: 'thin',
+            scrollbarColor: '#ccc transparent'
           }}>
+            <table className="students-table" style={{
+              width: '100%',
+              borderCollapse: 'collapse',
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              overflow: 'hidden',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+              minWidth: '800px'
+            }}>
             <thead style={{ backgroundColor: '#f8f9fa' }}>
               <tr>
                 <th style={{ padding: '12px', textAlign: 'left', fontWeight: '600', color: '#495057', borderBottom: '2px solid #dee2e6', width: '15%' }}>Student ID</th>
@@ -993,7 +999,8 @@ function FacultyDashboard({ user, onLogout }) {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         )}
       </div>
     );

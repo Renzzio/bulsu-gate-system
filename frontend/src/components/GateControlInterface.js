@@ -26,6 +26,7 @@ const GateControlInterface = ({ user, onLogout }) => {
   const [violationNotes, setViolationNotes] = useState('');
   const [approvalData, setApprovalData] = useState(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [exitApprovalData, setExitApprovalData] = useState(null); // New state for exit approvals
 
   // Range options (simplified since we only want latest)
   const rangeOptions = [
@@ -166,16 +167,28 @@ const GateControlInterface = ({ user, onLogout }) => {
 
         const response = await gateService.scanStudent(payload);
 
-        if (scanType === 'exit') {
-          // Exits always auto-grant access
+        if (scanType === 'exit' && response.exitApprovalNeeded) {
+          // Exits during class time: show exit approval UI
+          setExitApprovalData({
+            studentId: scannedId,
+            scanType,
+            gateId,
+            studentName: response.log?.studentName,
+            campusName: response.log?.campusName,
+            scheduleSummary: response.log?.scheduleSummary
+          });
+          setLoading(false);
+          return;
+        } else if (!response.allowed && scanType === 'exit') {
+          // Exits that are still not allowed (edge case): show denied
           setStatus({
-            type: 'success',
+            type: 'warning',
             message: response.message,
             details: response
           });
           setShowStatusModal(true);
-        } else if (response.allowed) {
-          // Entries with schedule: show approval UI
+        } else if (response.allowed && scanType === 'entry') {
+          // Entries with schedule: show entry approval UI
           setApprovalData({
             studentId: scannedId,
             scanType,
@@ -186,10 +199,18 @@ const GateControlInterface = ({ user, onLogout }) => {
           });
           setLoading(false);
           return;
-        } else {
+        } else if (!response.allowed && scanType === 'entry') {
           // Entries without schedule: show denied status
           setStatus({
             type: 'warning',
+            message: response.message,
+            details: response
+          });
+          setShowStatusModal(true);
+        } else {
+          // Default case: show status (should not normally happen)
+          setStatus({
+            type: response.allowed ? 'success' : 'warning',
             message: response.message,
             details: response
           });
@@ -225,16 +246,16 @@ const GateControlInterface = ({ user, onLogout }) => {
   };
 
   // Process approval with optional violation
-  const processApproval = async () => {
-    if (!approvalData) return;
+  const processApproval = async (guardDecisionOverride = null) => {
+    if (!approvalData && !exitApprovalData) return;
 
     setLoading(true);
 
     try {
       const payload = {
-        studentId: approvalData.studentId,
-        scanType: approvalData.scanType,
-        gateId: approvalData.gateId
+        studentId: approvalData?.studentId || exitApprovalData?.studentId,
+        scanType: approvalData?.scanType || exitApprovalData?.scanType,
+        gateId: approvalData?.gateId || exitApprovalData?.gateId
       };
 
       // Add violation info if selected
@@ -243,13 +264,23 @@ const GateControlInterface = ({ user, onLogout }) => {
         payload.violationNotes = violationNotes || '';
       }
 
+      // Add guard decision for exit approvals
+      if (exitApprovalData && guardDecisionOverride) {
+        payload.guardDecision = guardDecisionOverride;
+      }
+
       const response = await gateService.scanStudent(payload);
       setStatus({
-        type: 'success',
-        message: response.violationRecorded
-          ? `Access Approved • Violation noted: ${selectedViolation}`
-          : 'Access Approved',
-        details: response
+        type: response.allowed ? 'success' : 'warning',
+        message: response.allowed
+          ? (response.violationRecorded
+            ? `Access Approved • Violation noted: ${selectedViolation || guardDecisionOverride === 'deny' ? 'Guard denied' : ''}`
+            : 'Access Approved')
+          : 'Access Denied',
+        details: {
+          ...response,
+          log: response.log ? { ...response.log } : undefined // Shallow copy to avoid circular refs
+        }
       });
       setShowStatusModal(true);
 
@@ -258,6 +289,7 @@ const GateControlInterface = ({ user, onLogout }) => {
       setSelectedViolation('');
       setViolationNotes('');
       setApprovalData(null);
+      setExitApprovalData(null);
 
       // Refresh latest log
       setTimeout(() => {
@@ -272,6 +304,7 @@ const GateControlInterface = ({ user, onLogout }) => {
       });
       setShowStatusModal(true);
       setApprovalData(null);
+      setExitApprovalData(null);
     } finally {
       setLoading(false);
     }
@@ -517,15 +550,18 @@ const GateControlInterface = ({ user, onLogout }) => {
 
         const response = await gateService.scanStudent(payload);
 
-        if (scanType === 'exit') {
-          // Exits always auto-grant access - no approval UI needed
-          setStatus({
-            type: 'success',
-            message: response.message,
-            details: response
+        // Handle exit approval needed (during class time)
+        if (scanType === 'exit' && response.exitApprovalNeeded) {
+          setExitApprovalData({
+            studentId: scannedId,
+            scanType,
+            gateId,
+            studentName: response.log?.studentName,
+            campusName: response.log?.campusName,
+            scheduleSummary: response.log?.scheduleSummary
           });
-          setShowStatusModal(true);
-        } else if (response.allowed) {
+          return;
+        } else if (response.allowed && scanType === 'entry') {
           // Entries with schedule: automatically show approval UI
           setApprovalData({
             studentId: scannedId,
@@ -535,16 +571,22 @@ const GateControlInterface = ({ user, onLogout }) => {
             campusName: response.log?.campusName,
             scheduleSummary: response.log?.scheduleSummary
           });
-        } else {
-          // Entries without schedule: show denied status
+        } else if (!response.allowed) {
+          // All other cases (entries without schedule, denied exits): show status
           setStatus({
             type: 'warning',
             message: response.message,
             details: response
           });
           setShowStatusModal(true);
-          // Clear input for next scan
-          setScanInput('');
+        } else {
+          // Normal approved entries or exits: show success status
+          setStatus({
+            type: 'success',
+            message: response.message,
+            details: response
+          });
+          setShowStatusModal(true);
         }
       }
 
@@ -602,12 +644,12 @@ const GateControlInterface = ({ user, onLogout }) => {
               type="button"
               className={`camera-toggle ${cameraActive ? 'active' : ''}`}
               onClick={toggleCamera}
-              disabled={loading || scanning}
+              disabled={loading}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                cursor: (loading || scanning) ? 'not-allowed' : 'pointer',
+                cursor: (loading || scanning) ? 'pointer' : 'pointer',
                 margin: '0 auto',
                 padding: '12px 24px',
                 fontSize: '16px',
@@ -797,10 +839,10 @@ const GateControlInterface = ({ user, onLogout }) => {
             </form>
 
             {/* Clear approval UI when needed */}
-            {approvalData && (
+            {(approvalData || exitApprovalData) && (
               <div style={{ margin: '10px 0', textAlign: 'center' }}>
                 <button
-                  onClick={() => setApprovalData(null)}
+                  onClick={() => { setApprovalData(null); setExitApprovalData(null); }}
                   style={{
                     padding: '8px 16px',
                     backgroundColor: '#6c757d',
@@ -975,6 +1017,200 @@ const GateControlInterface = ({ user, onLogout }) => {
               >
                 {loading ? 'Processing...' : (selectedViolation ? 'Report Violation & Grant Access' : 'Grant Access')}
               </button>
+            </div>
+          )}
+
+          {/* Exit Approval UI for students attempting to exit during class time */}
+          {exitApprovalData && (
+            <div style={{
+              margin: '20px 0',
+              padding: '20px',
+              backgroundColor: '#fff3cd',
+              border: '1px solid #ffeaa7',
+              borderRadius: '12px'
+            }}>
+              <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <h3 style={{ margin: '0 0 8px 0', color: '#856404', fontSize: '20px' }}>
+                  🚪 Exit During Class Time
+                </h3>
+                <p style={{ margin: '0', color: '#856404', fontSize: '16px', fontWeight: '600' }}>
+                  <strong>{exitApprovalData.studentName || exitApprovalData.studentId}</strong> is attempting to exit during class
+                </p>
+                {exitApprovalData.campusName && (
+                  <p style={{ margin: '4px 0 0 0', color: '#856404', fontSize: '14px', fontStyle: 'italic' }}>
+                    📍 {exitApprovalData.campusName}
+                  </p>
+                )}
+                {exitApprovalData.scheduleSummary && (
+                  <div style={{ marginTop: '10px', fontSize: '14px', color: '#856404' }}>
+                    <p><strong>Current Class:</strong> {exitApprovalData.scheduleSummary.subjectName}</p>
+                    <p><strong>Time:</strong> {exitApprovalData.scheduleSummary.startTime} - {exitApprovalData.scheduleSummary.endTime}</p>
+                    <p><strong>Room:</strong> {exitApprovalData.scheduleSummary.room}</p>
+                  </div>
+                )}
+                <div style={{
+                  marginTop: '15px',
+                  padding: '12px 16px',
+                  backgroundColor: '#f8f9fa',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '6px',
+                  fontSize: '14px',
+                  color: '#495057'
+                }}>
+                  <strong>⚠️ Security Approval Required:</strong> Student is leaving during scheduled class time. As security personnel, you need to confirm whether to allow this exit.
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '8px',
+                  fontWeight: '600',
+                  color: '#495057',
+                  fontSize: '14px'
+                }}>
+                  Reason for untimely exit (Optional - helps with records):
+                </label>
+                <select
+                  value={selectedViolation}
+                  onChange={(e) => setSelectedViolation(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    border: '1px solid #ddd',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    backgroundColor: 'white'
+                  }}
+                >
+                  <option value="">Personal reason - no violation</option>
+                  <option value="Health Emergency">Health Emergency</option>
+                  <option value="Family Emergency">Family Emergency</option>
+                  <option value="Appointment">Medical/Dental Appointment</option>
+                  <option value="Authorized Early Dismissal">Authorized Early Dismissal</option>
+                  <option value="School Business">School Business</option>
+                  <option value="Other">Other (specify below)</option>
+                </select>
+              </div>
+
+              {selectedViolation === 'Other' && (
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontWeight: '600',
+                    color: '#495057',
+                    fontSize: '14px'
+                  }}>
+                    Specify Reason:
+                  </label>
+                  <input
+                    type="text"
+                    value={violationNotes}
+                    onChange={(e) => setViolationNotes(e.target.value)}
+                    placeholder="Explain the reason for exit..."
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              )}
+
+              {selectedViolation && selectedViolation !== 'Other' && (
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{
+                    display: 'block',
+                    marginBottom: '8px',
+                    fontWeight: '600',
+                    color: '#495057',
+                    fontSize: '14px'
+                  }}>
+                    Additional Notes (Optional):
+                  </label>
+                  <input
+                    type="text"
+                    value={violationNotes}
+                    onChange={(e) => setViolationNotes(e.target.value)}
+                    placeholder="Any additional details..."
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px',
+                      border: '1px solid #ddd',
+                      borderRadius: '6px',
+                      fontSize: '14px'
+                    }}
+                  />
+                </div>
+              )}
+
+              <div style={{
+                backgroundColor: selectedViolation ? '#d4edda' : '#fff3cd',
+                border: selectedViolation ? '1px solid #c8e6c9' : '1px solid #ffeaa7',
+                borderRadius: '6px',
+                padding: '12px',
+                marginBottom: '20px',
+                fontSize: '13px',
+                color: selectedViolation ? '#155724' : '#856404'
+              }}>
+                {selectedViolation ? (
+                  <div style={{ marginTop: '4px' }}>
+                    <strong>📝 Recorded reason:</strong> {selectedViolation}
+                    {violationNotes && (
+                      <div style={{ marginTop: '4px' }}>
+                        <strong>Details:</strong> {violationNotes}
+                      </div>
+                    )}
+                    <div style={{ marginTop: '8px' }}>
+                      Exit will be allowed and logged with the provided reason.
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <strong>⚠️ No reason specified:</strong> Exit will be allowed but recorded as "Personal reason - no violation".
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button
+                  onClick={() => processApproval('approve')}
+                  disabled={loading}
+                  style={{
+                    flex: 1,
+                    padding: '14px 20px',
+                    backgroundColor: '#28a745',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontSize: '16px',
+                    fontWeight: '600'
+                  }}
+                >
+                  {loading ? 'Processing...' : 'Allow Exit'}
+                </button>
+                <button
+                  onClick={() => processApproval('deny')}
+                  disabled={loading}
+                  style={{
+                    flex: 1,
+                    padding: '14px 20px',
+                    backgroundColor: '#dc3545',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    fontSize: '16px',
+                    fontWeight: '600'
+                  }}
+                >
+                  {loading ? 'Processing...' : 'Deny Exit'}
+                </button>
+              </div>
             </div>
           )}
 

@@ -67,7 +67,6 @@ function Login({ onLogin }) {
           </p>
           <div className="university-logo" style={{ marginTop: '30px' }}>
             <p style={{ fontSize: '0.9rem', fontWeight: '500', color: '#c4c4c4ff' }}>
-              College of Information and Communications Technology
             </p>
           </div>
         </div>

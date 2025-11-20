@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import gateService from '../services/gateService';
 import visitorService from '../services/visitorService';
+import { db, ref, onValue } from '../firebase';
 import { QrCode, Camera, CameraOff } from 'lucide-react';
 import './GateControlInterface.css';
 
@@ -39,17 +40,24 @@ const GateControlInterface = ({ user, onLogout }) => {
   const html5QrCodeRef = useRef(null);
   const scannerId = 'qr-reader';
 
-  // Fetch logs and gates on mount, and set up periodic refresh
+  // Fetch logs and gates on mount, and set up real-time Firebase listener
   useEffect(() => {
     fetchLatestLog();
     fetchAvailableGates();
 
-    // Auto-refresh latest log every 30 seconds
-    const refreshInterval = setInterval(() => {
-      fetchLatestLog();
-    }, 30000); // 30 seconds
+    // Set up real-time Firebase listener for access logs
+    const logsRef = ref(db, 'accessLogs');
+    const unsubscribe = onValue(logsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        // Convert to array and get the latest
+        const logsArray = Object.values(data).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        setLogs([logsArray[0]]);
+        setLogsLoading(false);
+      }
+    });
 
-    return () => clearInterval(refreshInterval);
+    return () => unsubscribe();
   }, []);
 
   // Cleanup QR scanner on unmount

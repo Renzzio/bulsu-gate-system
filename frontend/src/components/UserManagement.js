@@ -1177,7 +1177,7 @@ function UserManagement({ role = 'admin' }) {
 
               <div className="form-actions">
 
-                <button type="submit" className="btn btn-success" disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <button type="submit" className="btn btn-success" disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
                   {loading ? (
                     editingUser ? 'Updating...' : 'Creating...'
                   ) : (

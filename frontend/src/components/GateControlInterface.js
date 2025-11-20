@@ -167,28 +167,9 @@ const GateControlInterface = ({ user, onLogout }) => {
 
         const response = await gateService.scanStudent(payload);
 
-        if (scanType === 'exit' && response.exitApprovalNeeded) {
-          // Exits during class time: show exit approval UI
-          setExitApprovalData({
-            studentId: scannedId,
-            scanType,
-            gateId,
-            studentName: response.log?.studentName,
-            campusName: response.log?.campusName,
-            scheduleSummary: response.log?.scheduleSummary
-          });
-          setLoading(false);
-          return;
-        } else if (!response.allowed && scanType === 'exit') {
-          // Exits that are still not allowed (edge case): show denied
-          setStatus({
-            type: 'warning',
-            message: response.message,
-            details: response
-          });
-          setShowStatusModal(true);
-        } else if (response.allowed && scanType === 'entry') {
-          // Entries with schedule: show entry approval UI
+        // Handle scan results based on schedule
+        if (response.exitApprovalNeeded) {
+          // Student HAS schedule - show violation modal for entry approval
           setApprovalData({
             studentId: scannedId,
             scanType,
@@ -199,18 +180,10 @@ const GateControlInterface = ({ user, onLogout }) => {
           });
           setLoading(false);
           return;
-        } else if (!response.allowed && scanType === 'entry') {
-          // Entries without schedule: show denied status
+        } else {
+          // Student has NO schedule - show denial modal immediately
           setStatus({
             type: 'warning',
-            message: response.message,
-            details: response
-          });
-          setShowStatusModal(true);
-        } else {
-          // Default case: show status (should not normally happen)
-          setStatus({
-            type: response.allowed ? 'success' : 'warning',
             message: response.message,
             details: response
           });
@@ -258,11 +231,9 @@ const GateControlInterface = ({ user, onLogout }) => {
         gateId: approvalData?.gateId || exitApprovalData?.gateId
       };
 
-      // Add violation info if selected
-      if (selectedViolation) {
-        payload.violationType = selectedViolation;
-        payload.violationNotes = violationNotes || '';
-      }
+      // Always include violation info (may be empty for normal access)
+      payload.violationType = selectedViolation;
+      payload.violationNotes = violationNotes || '';
 
       // Add guard decision for exit approvals
       if (exitApprovalData && guardDecisionOverride) {
@@ -270,13 +241,36 @@ const GateControlInterface = ({ user, onLogout }) => {
       }
 
       const response = await gateService.scanStudent(payload);
+
+      // Determine appropriate message based on approval type
+      let successMessage = approvalData?.scanType === 'entry' ? 'Entry Successful' : 'Exit Successful';
+
+      // Check if this is a valid exit reason (not an actual violation)
+      const validExitReasons = [
+        'Health Emergency',
+        'Family Emergency',
+        'Appointment',
+        'Authorized Early Dismissal',
+        'School Business',
+        'Other'
+      ];
+
+      const scanType = approvalData?.scanType || exitApprovalData?.scanType;
+      const isValidExitReason = scanType === 'exit' && selectedViolation && validExitReasons.includes(selectedViolation);
+
+      if (response.allowed && isValidExitReason) {
+        // For valid exit reasons, show as approved - NO violation noted ever
+        successMessage = `Exit Approved - ${selectedViolation}`;
+      } else if (response.allowed && response.violationRecorded) {
+        // For actual violations that were allowed (not valid exit reasons)
+        successMessage = `${scanType === 'entry' ? 'Entry' : 'Exit'} Successful • Violation noted: ${selectedViolation || ''}`;
+      } else if (response.allowed) {
+        successMessage = `${scanType === 'entry' ? 'Entry' : 'Exit'} Successful`;
+      }
+
       setStatus({
         type: response.allowed ? 'success' : 'warning',
-        message: response.allowed
-          ? (response.violationRecorded
-            ? `Access Approved • Violation noted: ${selectedViolation || guardDecisionOverride === 'deny' ? 'Guard denied' : ''}`
-            : 'Access Approved')
-          : 'Access Denied',
+        message: response.allowed ? successMessage : 'Access Denied',
         details: {
           ...response,
           log: response.log ? { ...response.log } : undefined // Shallow copy to avoid circular refs
@@ -487,6 +481,9 @@ const GateControlInterface = ({ user, onLogout }) => {
         } catch (clearError) {
           console.log('Clear failed, scanner might not be initialized:', clearError);
         }
+
+        // Reset the ref to ensure it's not reused
+        html5QrCodeRef.current = null;
       }
       setScanning(false);
       setCameraActive(false);
@@ -500,110 +497,164 @@ const GateControlInterface = ({ user, onLogout }) => {
   };
 
   const handleQRScanSuccess = async (decodedText) => {
-    // Extract userID from QR code
-    // The QR code could be a userID or a visitor code (VIS- prefixed)
-    const scannedId = decodedText.trim();
+    console.log('🔍 handleQRScanSuccess called with:', decodedText);
 
-    // Set the scanned ID to the input field
+    // Extract userID from QR code - handle both direct IDs and URLs
+    let scannedId = decodedText.trim();
+
+    // If it looks like a URL, try to extract student ID
+    const urlPattern = /\/student\/([^\/\?]+)$/;
+    const match = scannedId.match(urlPattern);
+    if (match) {
+      scannedId = match[1];
+      console.log('🔍 Extracted student ID from URL:', scannedId);
+    } else if (scannedId.startsWith('http')) {
+      // Try to get the last part as ID
+      const parts = scannedId.split('/').filter(part => part);
+      if (parts.length > 0) {
+        scannedId = parts[parts.length - 1].split('?')[0];
+        console.log('🔍 Extracted last part as student ID:', scannedId);
+      }
+    }
+
+    console.log('🔍 Final scanned ID:', scannedId);
+
+    // Immediately disable scanning to prevent duplicate processing and hide camera
+    setScanning(false);
+    setCameraActive(false);
+
+    // Set the scanned ID to the input field and show immediate processing feedback
+    console.log('🔍 Setting scanInput to:', scannedId);
     setScanInput(scannedId);
-    setStatus(null);
-    setShowStatusModal(false);
+
+    console.log('🔍 Setting status to processing');
+    setStatus({ type: 'info', message: `Processing QR code: ${scannedId}` });
+
+    console.log('🔍 Setting showStatusModal to true');
+    setShowStatusModal(true);
+
+    // Force component update check
+    console.log('🔍 Current state after setState - status:', { type: 'info', message: `Processing QR code: ${scannedId}` }, 'showStatusModal: true');
 
     // Stop scanning after successful scan
     try {
-      stopQRScanner();
+      await stopQRScanner();
+      console.log('✅ Scanner stopped');
     } catch (error) {
-      console.warn('Failed to stop scanner after successful scan:', error);
-      // Reset the states manually if stopping fails
-      setScanning(false);
-      setCameraActive(false);
+      console.warn('⚠️ Failed to stop scanner after successful scan:', error);
     }
 
-    try {
-      // Check if this is a visitor QR code
-      if (scannedId.startsWith('VIS-')) {
-        // Process visitor QR scan directly
-        const result = await visitorService.processVisitorScan(scannedId, scanType, gateId);
+    // Defer processing to allow UI to update and prevent state conflicts
+    setTimeout(async () => {
+      console.log('⏰ setTimeout triggered, starting API processing');
+      try {
+        // Check if this is a visitor QR code
+        if (scannedId.startsWith('VIS-')) {
+          console.log('👥 Processing visitor scan');
+          // Process visitor QR scan directly
+          const result = await visitorService.processVisitorScan(scannedId, scanType, gateId);
+          console.log('👥 Visitor scan result:', result);
 
-        if (result.success && result.allowed) {
-          setStatus({
-            type: 'success',
-            message: `${result.message} - Usage: ${result.visitor.usageCount}/${result.visitor.maxUses}`,
-            details: { visitor: result.visitor, actionType: result.actionType }
-          });
-          setShowStatusModal(true);
+          if (result.success && result.allowed) {
+            setStatus({
+              type: 'success',
+              message: `${result.message} - Usage: ${result.visitor.usageCount}/${result.visitor.maxUses}`,
+              details: { visitor: result.visitor, actionType: result.actionType }
+            });
+            setShowStatusModal(true);
+          } else {
+            setStatus({
+              type: 'warning',
+              message: `${result.message}`,
+              details: result
+            });
+            setShowStatusModal(true);
+          }
         } else {
-          setStatus({
-            type: 'warning',
-            message: `${result.message}`,
-            details: result
-          });
-          setShowStatusModal(true);
-        }
-      } else {
-        // For students: Immediate schedule check and approval UI
-        const payload = {
-          studentId: scannedId,
-          scanType: scanType,
-          gateId: gateId
-        };
-
-        const response = await gateService.scanStudent(payload);
-
-        // Handle exit approval needed (during class time)
-        if (scanType === 'exit' && response.exitApprovalNeeded) {
-          setExitApprovalData({
-            studentId: scannedId,
-            scanType,
-            gateId,
-            studentName: response.log?.studentName,
-            campusName: response.log?.campusName,
-            scheduleSummary: response.log?.scheduleSummary
-          });
-          return;
-        } else if (response.allowed && scanType === 'entry') {
-          // Entries with schedule: automatically show approval UI
-          setApprovalData({
+          console.log('🎓 Processing student scan');
+          // For students: Check schedule and show approval UI or denial modal
+          const payload = {
             studentId: scannedId,
             scanType: scanType,
-            gateId: gateId,
-            studentName: response.log?.studentName,
-            campusName: response.log?.campusName,
-            scheduleSummary: response.log?.scheduleSummary
-          });
-        } else if (!response.allowed) {
-          // All other cases (entries without schedule, denied exits): show status
-          setStatus({
-            type: 'warning',
-            message: response.message,
-            details: response
-          });
-          setShowStatusModal(true);
-        } else {
-          // Normal approved entries or exits: show success status
-          setStatus({
-            type: 'success',
-            message: response.message,
-            details: response
-          });
-          setShowStatusModal(true);
-        }
-      }
+            gateId: gateId
+          };
 
-      // Refresh latest log
-      setTimeout(() => {
-        fetchLatestLog();
-      }, 500);
-    } catch (error) {
-      console.error('QR scan processing error:', error);
-      setStatus({
-        type: 'error',
-        message: error.message || 'Scan processing failed',
-        details: error
-      });
-      setShowStatusModal(true);
-      setScanInput('');
-    }
+          console.log('📡 Calling scanStudent API:', payload);
+          const response = await gateService.scanStudent(payload);
+          console.log('📡 scanStudent response:', response);
+
+          if (scanType === 'entry') {
+            // ENTRY LOGIC
+            if (response.exitApprovalNeeded) {
+              console.log('✅ Student has schedule - showing violation approval modal');
+              // Student HAS schedule - show violation modal for entry approval
+              setApprovalData({
+                studentId: scannedId,
+                scanType,
+                gateId,
+                studentName: response.log?.studentName,
+                campusName: response.log?.campusName,
+                scheduleSummary: response.log?.scheduleSummary
+              });
+              // Close the processing modal since we're showing approval modal instead
+              setShowStatusModal(false);
+              console.log('✅ Approval modal data set, processing modal closed');
+            } else {
+              console.log('❌ Student has no schedule - showing denial modal');
+              // Student has NO schedule - show denial modal immediately
+              setStatus({
+                type: 'warning',
+                message: response.message,
+                details: response
+              });
+              setShowStatusModal(true);
+              console.log('❌ Denial modal set');
+            }
+          } else {
+            // EXIT LOGIC
+            if (response.exitApprovalNeeded) {
+              console.log('🚪 Student has ongoing class - showing exit confirmation modal');
+              // Student HAS ongoing class - show guard approval modal for exit
+              setExitApprovalData({
+                studentId: scannedId,
+                scanType,
+                gateId,
+                studentName: response.log?.studentName,
+                campusName: response.log?.campusName,
+                scheduleSummary: response.log?.scheduleSummary
+              });
+              // Close the processing modal since we're showing approval modal instead
+              setShowStatusModal(false);
+              console.log('🚪 Exit approval modal data set, processing modal closed');
+            } else {
+              console.log('✅ Student has no ongoing class - showing allowed to exit modal');
+              // Student has NO ongoing class - show success modal allowing exit
+              setStatus({
+                type: 'success',
+                message: response.allowed ? 'Exit Allowed - No ongoing classes detected' : response.message,
+                details: response
+              });
+              setShowStatusModal(true);
+              console.log('✅ Exit allowed modal set');
+            }
+          }
+        }
+
+        // Refresh latest log after processing
+        setTimeout(() => {
+          fetchLatestLog();
+        }, 500);
+      } catch (error) {
+        console.error('❌ Scan processing error:', error);
+        setStatus({
+          type: 'error',
+          message: error.message || 'Scan processing failed',
+          details: error
+        });
+        setShowStatusModal(true);
+        setScanInput('');
+      }
+    }, 100);
   };
 
   const toggleCamera = async (e) => {
@@ -870,7 +921,7 @@ const GateControlInterface = ({ user, onLogout }) => {
             }}>
               <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                 <h3 style={{ margin: '0 0 8px 0', color: '#2e7d2e', fontSize: '20px' }}>
-                  🏫 Student Schedule Confirmed
+                  ✅ Student Access Approval Required
                 </h3>
                 <p style={{ margin: '0', color: '#2e7d2e', fontSize: '16px' }}>
                   <strong>{approvalData.studentName || approvalData.studentId}</strong> has classes today
@@ -1241,7 +1292,7 @@ const GateControlInterface = ({ user, onLogout }) => {
               }}>
                 {/* Modal Header */}
                 <div style={{
-                  backgroundColor: status.type === 'success' ? '#27ae60' : status.type === 'warning' ? '#f39c12' : '#e74c3c',
+                  backgroundColor: status.type === 'success' ? '#27ae60' : status.type === 'warning' ? '#f39c12' : status.type === 'info' ? '#007bff' : '#e74c3c',
                   color: 'white',
                   padding: '30px 20px',
                   textAlign: 'center',
@@ -1250,10 +1301,10 @@ const GateControlInterface = ({ user, onLogout }) => {
                   position: 'relative'
                 }}>
                   <div style={{ fontSize: '64px', marginBottom: '15px' }}>
-                    {status.type === 'success' ? '✅' : status.type === 'warning' ? '⚠️' : '❌'}
+                    {status.type === 'success' ? '✅' : status.type === 'warning' ? '⚠️' : status.type === 'info' ? '⏳' : '❌'}
                   </div>
                   <h2 style={{ margin: '0', fontSize: '24px', fontWeight: 'bold' }}>
-                    {status.type === 'success' ? 'ACCESS GRANTED' : status.type === 'warning' ? 'ACCESS DENIED' : 'ACCESS DENIED'}
+                    {status.type === 'success' ? 'ACCESS GRANTED' : status.type === 'warning' ? 'ACCESS DENIED' : status.type === 'info' ? 'PROCESSING SCAN' : 'ACCESS DENIED'}
                   </h2>
                 </div>
 

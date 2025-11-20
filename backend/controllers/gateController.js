@@ -62,30 +62,222 @@ const scanStudent = async (req, res) => {
     let allowed = true; // Allow all scans by default
     const reasons = [];
 
-    // Restrict entries for students without schedule
-    if (scanType === 'entry' && !hasScheduleToday) {
-      allowed = false;
-      reasons.push('No scheduled classes for today');
-    }
+    // Flag for approval needed - ALL entries and exits during class
+    const approvalNeeded = (scanType === 'entry') || (scanType === 'exit' && activeSchedule);
 
-    // Handle guard decisions for exits during class
-    if (scanType === 'exit' && activeSchedule && guardDecision) {
-      if (guardDecision === 'approve') {
-        allowed = true;
-        reasons.push('Exit approved by guard during class time');
-      } else if (guardDecision === 'deny') {
-        allowed = false;
-        reasons.push('Exit denied by guard during class time');
+    // First check: if this is an initial entry or exit scan (no guardDecision)
+    if ((scanType === 'entry' || scanType === 'exit') && !guardDecision) {
+      let responseMessage, responseReasons, responseAllowed, exitApprovalNeeded;
+
+      if (scanType === 'exit') {
+        // SPECIAL LOGIC FOR EXIT SCANS
+        if (activeSchedule) {
+          // Student HAS ongoing class - show exit confirmation modal
+          responseMessage = 'Exit confirmation required - student has ongoing class';
+          responseReasons = ['Student leaving during class time'];
+          responseAllowed = false; // Guard will decide
+          exitApprovalNeeded = true; // Show exit approval modal
+        } else {
+          // Student has NO ongoing class - allow exit immediately
+          responseMessage = 'Exit allowed - no ongoing classes detected';
+          responseReasons = ['No ongoing classes at this time'];
+          responseAllowed = true; // Always allow
+          exitApprovalNeeded = false; // Just show success modal and log
+
+          // Log the exit immediately
+          const logId = uuidv4();
+          const timestamp = now.toISOString();
+          const dateKey = formatDateKey(now);
+
+          const logData = {
+            logId,
+            studentId,
+            studentName: `${studentProfile.firstName || ''} ${studentProfile.lastName || ''}`.trim(),
+            scanType,
+            gateId: gateId || studentProfile.assignedGate || 'Main Gate',
+            gateName: gateInfo?.name || 'Unknown Gate',
+            gateLocation: gateInfo?.location || 'Unknown Location',
+            campusId: gateInfo?.campusId || studentProfile.campusId || 'unknown',
+            campusName: campusInfo?.name || 'Unknown Campus',
+            timestamp,
+            allowed: true,
+            reasons: responseReasons,
+            scheduleSummary: null,
+            createdBy: req.user?.userId || req.user?.userID || 'system'
+          };
+
+          await db.ref(`accessLogs/${dateKey}/${logId}`).set(logData);
+
+          // No alert or notification for successful exits with no ongoing class
+
+          return res.json({
+            success: true,
+            message: responseMessage,
+            allowed: responseAllowed,
+            reasons: responseReasons,
+            exitApprovalNeeded,
+            log: logData
+          });
+        }
+      } 
+      // Check if this is a guard approval from violation modal (has violation data)
+      else if (hasScheduleToday && typeof violationType !== 'undefined') {
+        // This is a guard approving from the violation modal - allow entry
+        responseMessage = 'Entry approved - processing access';
+        responseReasons = ['Guard approval granted'];
+        responseAllowed = true;
+        exitApprovalNeeded = false; // Don't show modal, process immediately
+
+        // Create success log
+        const logId = uuidv4();
+        const timestamp = now.toISOString();
+        const dateKey = formatDateKey(now);
+
+        const logData = {
+          logId,
+          studentId,
+          studentName: `${studentProfile.firstName || ''} ${studentProfile.lastName || ''}`.trim(),
+          scanType,
+          gateId: gateId || studentProfile.assignedGate || 'Main Gate',
+          gateName: gateInfo?.name || 'Unknown Gate',
+          gateLocation: gateInfo?.location || 'Unknown Location',
+          campusId: gateInfo?.campusId || studentProfile.campusId || 'unknown',
+          campusName: campusInfo?.name || 'Unknown Campus',
+          timestamp,
+          allowed: true,
+          reasons: responseReasons,
+          scheduleSummary: activeSchedule ? formatScheduleSummary(activeSchedule) : null,
+          createdBy: req.user?.userId || req.user?.userID || 'system'
+        };
+
+        // Log the approval
+        await db.ref(`accessLogs/${dateKey}/${logId}`).set(logData);
+
+        // Record violation if present
+        if (violationType) {
+          await recordViolation({
+            logId,
+            studentId,
+            studentName: logData.studentName,
+            scanType,
+            gateId: logData.gateId,
+            gateName: logData.gateName,
+            gateLocation: logData.gateLocation,
+            campusId: logData.campusId,
+            campusName: logData.campusName,
+            timestamp,
+            violationType,
+            violationNotes: violationNotes || 'No additional notes'
+          }, dateKey);
+        }
+
+        // Send approval notification
+        await createAlert({
+          studentId: studentProfile.userId,
+          studentName: logData.studentName,
+          gateId: logData.gateId,
+          campusId: logData.campusId,
+          timestamp,
+          severity: violationType ? 'warning' : 'success',
+          message: violationType ? 'Entry Approved (with Violation)' : 'Entry Approved'
+        });
+
+        await sendNotificationToStudent(studentProfile.userId,
+          violationType ? 'Entry Approved (with Violation)' : 'Entry Approved',
+          'Access granted successfully.');
+
+        return res.json({
+          success: true,
+          message: responseMessage,
+          allowed: responseAllowed,
+          reasons: responseReasons,
+          exitApprovalNeeded,
+          log: logData
+        });
+      } else if (hasScheduleToday) {
+        // Student HAS schedule - show violation modal for approval (initial scan)
+        responseMessage = 'Entry confirmation required - student has schedule for today';
+        responseReasons = ['Verify student and note any violations'];
+        responseAllowed = false; // Guard will decide
+        exitApprovalNeeded = true; // Show approval UI with violation fields
+      } else {
+        // Student has NO schedule - show denial modal and log attempt
+        responseMessage = 'You are not allowed to enter. No schedule detected for today.';
+        responseReasons = ['You are not allowed to enter. No schedule detected for today.'];
+        responseAllowed = false; // Always deny
+        exitApprovalNeeded = false; // Just show denial modal
+
+        // For no-schedule students, create and return the denial log immediately
+        const logId = uuidv4();
+        const timestamp = now.toISOString();
+        const dateKey = formatDateKey(now);
+
+        const logData = {
+          logId,
+          studentId,
+          studentName: `${studentProfile.firstName || ''} ${studentProfile.lastName || ''}`.trim(),
+          scanType,
+          gateId: gateId || studentProfile.assignedGate || 'Main Gate',
+          gateName: gateInfo?.name || 'Unknown Gate',
+          gateLocation: gateInfo?.location || 'Unknown Location',
+          campusId: gateInfo?.campusId || studentProfile.campusId || 'unknown',
+          campusName: campusInfo?.name || 'Unknown Campus',
+          timestamp,
+          allowed: false,
+          reasons: responseReasons,
+          scheduleSummary: null,
+          createdBy: req.user?.userId || req.user?.userID || 'system'
+        };
+
+        // Log the denial attempt immediately
+        await db.ref(`accessLogs/${dateKey}/${logId}`).set(logData);
+
+        // Also record as violation
+        await recordViolation({
+          logId,
+          studentId,
+          studentName: logData.studentName,
+          scanType,
+          gateId: logData.gateId,
+          gateName: logData.gateName,
+          gateLocation: logData.gateLocation,
+          campusId: logData.campusId,
+          campusName: logData.campusName,
+          timestamp,
+          violationType: 'no_schedule',
+          violationNotes: 'Entry attempt without schedule - denied automatically'
+        }, dateKey);
+
+        // Send denial notification
+        await createAlert({
+          studentId: studentProfile.userId,
+          studentName: logData.studentName,
+          gateId: logData.gateId,
+          campusId: logData.campusId,
+          timestamp,
+          severity: 'error',
+          message: 'Entry Denied - No Schedule'
+        });
+
+        await sendNotificationToStudent(studentProfile.userId, 'Entry Denied - No Schedule', 'Access was denied. You have no scheduled classes for today.');
+
+        return res.json({
+          success: true,
+          message: responseMessage,
+          allowed: responseAllowed,
+          reasons: responseReasons,
+          exitApprovalNeeded,
+          log: logData
+        });
       }
-    } else if (scanType === 'exit' && activeSchedule && !guardDecision) {
-      // Student has an ongoing class - guard approval needed
-      // RETURN EARLY WITHOUT CREATING LOGS - approval needed first
+
+      // For scheduled students, just return the approval UI data (no logging until approved)
       return res.json({
         success: true,
-        message: 'Exit approval required - guard will make final decision',
-        allowed: false, // Initially false, guard will decide
-        reasons: ['Student has ongoing class - guard approval required'],
-        exitApprovalNeeded: true,
+        message: responseMessage,
+        allowed: responseAllowed,
+        reasons: responseReasons,
+        exitApprovalNeeded,
         log: {
           studentId,
           studentName: `${studentProfile.firstName || ''} ${studentProfile.lastName || ''}`.trim(),
@@ -97,9 +289,52 @@ const scanStudent = async (req, res) => {
       });
     }
 
+    // Handle guard decisions and auto-processing cases
+    if (scanType === 'entry' && !hasScheduleToday) {
+      allowed = false;
+      reasons.push('No scheduled classes for today');
+    } else if (scanType === 'entry' && hasScheduleToday && !guardDecision) {
+      // Fallback: guard approving an entry
+      allowed = true;
+      reasons.push('Entry approved by guard');
+    } else if (guardDecision === 'approve') {
+      allowed = true;
+      if (scanType === 'exit' && activeSchedule) {
+        reasons.push('Exit approved by guard during class time');
+      }
+    } else if (guardDecision === 'deny') {
+      allowed = false;
+      if (scanType === 'exit' && activeSchedule) {
+        reasons.push('Exit denied by guard during class time');
+      }
+    }
+
+    // Handle explicit guard decisions (for exits)
+    else if (guardDecision === 'approve') {
+      allowed = true;
+      if (scanType === 'exit' && activeSchedule) {
+        reasons.push('Exit approved by guard during class time');
+      }
+    } else if (guardDecision === 'deny') {
+      allowed = false;
+      if (scanType === 'exit' && activeSchedule) {
+        reasons.push('Exit denied by guard during class time');
+      }
+    }
+
     const violationRecorded = Boolean(violationType);
     if (violationRecorded) {
-      reasons.push(`Violation noted: ${violationType}`);
+      // For exits with valid reasons, show as "Reason:" not "Violation noted:"
+      const isValidExitReason = scanType === 'exit' && (
+        violationType === 'Health Emergency' ||
+        violationType === 'Family Emergency' ||
+        violationType === 'Appointment' ||
+        violationType === 'Authorized Early Dismissal' ||
+        violationType === 'School Business' ||
+        violationType === 'Other'
+      );
+
+      reasons.push(`${isValidExitReason ? 'Reason' : 'Violation noted'}: ${violationType}`);
     }
 
     const logId = uuidv4();
@@ -125,7 +360,11 @@ const scanStudent = async (req, res) => {
 
     await db.ref(`accessLogs/${dateKey}/${logId}`).set(logData);
 
-    if (!allowed || violationRecorded) {
+    // Only record violations for denied access OR actual policy violations
+    // Don't record approved exits with valid reasons as violations
+    const isActualViolation = !allowed || (violationType && violationType !== 'Health Emergency' && violationType !== 'Family Emergency' && violationType !== 'Appointment' && violationType !== 'Authorized Early Dismissal' && violationType !== 'School Business' && violationType !== 'Other' && scanType !== 'exit');
+
+    if (isActualViolation) {
       await recordViolation({
         logId,
         studentId,
@@ -142,42 +381,41 @@ const scanStudent = async (req, res) => {
       }, dateKey);
     }
 
+    // For approved exits, log reasons but don't treat as violation
+    if (allowed && violationType && scanType === 'exit') {
+      // Don't log this as violation, just note the reason in the log
+    }
+
     // --- === UPDATED NOTIFICATION & ALERT LOGIC === ---
-    
+
     let notifTitle = "";
     let notifBody = "";
-    let alertSeverity = "info"; // Default severity
 
     if (allowed) {
         notifTitle = (scanType === 'entry') ? "Entry Approved" : "Exit Recorded";
         notifBody = `Your ${scanType} at ${logData.gateName} was successful.`;
-        alertSeverity = "success"; // Set severity for "Approved"
-        
-        if (violationRecorded) {
-            notifTitle = "Access Approved (with Violation)";
-            notifBody = `Violation noted: ${violationType}. ${violationNotes || ''}`;
-            alertSeverity = "warning"; // Set severity for "Violation"
-        }
     } else {
-        notifTitle = "Entry Denied";
+        notifTitle = (scanType === 'entry') ? "Entry Denied" : "Exit Denied";
         notifBody = `Access was denied. Reason: ${reasons.join(', ')}`;
-        alertSeverity = "error"; // Set severity for "Denied"
     }
 
-    // 1. ALWAYS create the alert log to show in the app's notification tab
-    await createAlert({
-      studentId: studentProfile.userId, // The Firebase Key
-      studentName: logData.studentName,
-      gateId: logData.gateId,
-      campusId: logData.campusId,
-      timestamp: timestamp, 
-      severity: alertSeverity,
-      message: notifTitle 
-    });
-    
-    // 2. ALWAYS send the push notification pop-up
-    await sendNotificationToStudent(studentProfile.userId, notifTitle, notifBody);
-    
+    // Only create alerts for actual violations (not successful entries/exits)
+    if (isActualViolation) {
+        // Send violation alert to student app notifications
+        await createAlert({
+          studentId: studentProfile.userId,
+          studentName: logData.studentName,
+          gateId: logData.gateId,
+          campusId: logData.campusId,
+          timestamp: timestamp,
+          severity: allowed ? 'warning' : 'error',
+          message: allowed ? `Violation Warning: ${violationType || 'Policy Violation'}` : notifTitle
+        });
+
+        // Send push notification only for violations
+        await sendNotificationToStudent(studentProfile.userId, notifTitle, notifBody);
+    }
+
     // --- === END OF UPDATED LOGIC === ---
 
     res.json({

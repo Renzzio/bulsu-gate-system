@@ -26,6 +26,10 @@ router.post('/', authenticateToken, authorizeRole('admin', 'guard', 'security', 
 // Update visitor usage (entry/exit)
 router.patch('/:visitorId/usage', authenticateToken, authorizeRole('admin', 'guard', 'security', 'security_guard', 'security_officer'), updateVisitorUsage);
 
+// Guards and admin routes for visitor management
+// Get all visitors for guards (with campus filtering)
+router.get('/all', authenticateToken, authorizeRole('admin', 'guard', 'security', 'security_guard', 'security_officer'), getAllVisitors);
+
 // Admin-only routes for full visitor management
 // Get all visitors (with optional campus filtering)
 router.get('/admin/all', authenticateToken, authorizeRole('admin'), getAllVisitors);

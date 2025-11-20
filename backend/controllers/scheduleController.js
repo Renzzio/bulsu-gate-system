@@ -370,6 +370,7 @@ const importSchedulesFromExcel = async (req, res) => {
       if (!validation.isValid) {
         importResults.failed.push({
           row: rowNumber,
+          subjectCode: normalizedRow.subjectCode,
           errors: validation.errors
         });
         continue;
@@ -388,6 +389,7 @@ const importSchedulesFromExcel = async (req, res) => {
       if (hasOverlap) {
         importResults.failed.push({
           row: rowNumber,
+          subjectCode: normalizedRow.subjectCode,
           errors: [`Schedule overlaps with existing schedule on ${newDay}`]
         });
         continue;
@@ -423,6 +425,7 @@ const importSchedulesFromExcel = async (req, res) => {
       } catch (error) {
         importResults.failed.push({
           row: rowNumber,
+          subjectCode: normalizedRow.subjectCode,
           errors: [`Database error: ${error.message}`]
         });
       }

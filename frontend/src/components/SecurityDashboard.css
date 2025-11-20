@@ -1,8 +1,8 @@
 /* Security Dashboard Styles - Matching Admin Layout */
 .security-layout {
-  display: flex;
+  display: block;
   min-height: 100vh;
-  background: var(--bulsu-gray);
+  background: white;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -18,7 +18,7 @@
   top: 0;
   left: 0;
   height: 100vh;
-  width: 240px;
+  width: 260px;
   overflow-y: auto;
   z-index: 100;
 }
@@ -32,7 +32,7 @@
 }
 
 .security-sidebar .logo img {
-  margin-left: 45px;
+  margin-left: 70px;
   width: 100px;
   height: 100px;
   border-radius: 50%;
@@ -82,25 +82,24 @@
 }
 
 .security-main {
-  margin-left: 240px;
+  margin-left: 260px;
   display: flex;
   flex-direction: column;
 }
 
 .security-topbar {
   background: var(--bg-white);
-  padding: var(--spacing-lg) var(--spacing-3xl);
+  padding: var(--spacing-lg) var(--spacing-lg);
   border-bottom: 1px solid var(--card-border);
   display: flex;
   justify-content: space-between;
   align-items: center;
   box-shadow: var(--shadow-md);
   position: fixed;
-  top: 0;
+  left: 260px;
   right: 0;
-  left: 240px;
+  top: 0;
   z-index: 50;
-  height: 80px;
 }
 
 .security-topbar h1 {
@@ -170,12 +169,18 @@
 
 .security-content {
   flex: 1;
-  margin-top: 80px; /* Account for fixed topbar */
-  padding: var(--spacing-3xl);
+  background-color: white;
+  margin-top: 80px;
+  padding: 0; /* Full width - no padding constraints */
+  padding-top: 20px;
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-2xl);
+  min-height: calc(100vh - 80px);
   overflow-y: auto;
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
 }
 
 /* Visitor Management Cards */
@@ -186,6 +191,9 @@
   box-shadow: var(--shadow-lg);
   padding: var(--spacing-2xl);
   overflow-x: auto;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .visitors-table table {
@@ -195,18 +203,19 @@
   border-radius: var(--radius-md);
   overflow: hidden;
   min-width: 800px;
+  table-layout: fixed;
 }
 
 .visitors-table thead {
-  background: var(--bulsu-gray);
+  background: var(--bulsu-red);
   border-bottom: 2px solid var(--card-border);
 }
 
 .visitors-table th {
   padding: var(--spacing-lg);
-  text-align: left;
+  text-align: center;
   font-weight: var(--font-weight-semibold);
-  color: var(--text-dark);
+  color: white;
   font-size: var(--font-size-sm);
   text-transform: uppercase;
   letter-spacing: 0.5px;
@@ -215,7 +224,7 @@
 .visitors-table td {
   padding: var(--spacing-lg);
   border-bottom: 1px solid var(--card-border);
-  vertical-align: top;
+  vertical-align: center;
   color: var(--text-muted);
 }
 
@@ -256,7 +265,7 @@
 
 /* Visitor Actions */
 .visitor-actions {
-  display: flex;
+  display: block;
   gap: var(--spacing-sm);
   align-items: center;
 }
@@ -298,6 +307,9 @@
 .visitor-search {
   margin-bottom: var(--spacing-xl);
   position: relative;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .visitor-search input {
@@ -328,9 +340,12 @@
 /* Visitor Stats */
 .visitor-stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-xl);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--spacing-xl);
+  margin-bottom: var(--spacing-2xl);
+  margin-left: auto;
+  margin-right: auto;
+  place-items: center;
 }
 
 .visitor-stat-card {
@@ -379,6 +394,30 @@
 
 /* Visitor Dashboard Container */
 .visitor-dashboard {
+  min-height: calc(100vh - 160px);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 0;
+  gap: var(--spacing-xl);
+}
+
+/* Maximize QR Scanner/Gate Control content */
+.gate-control-area {
+  background: white;
+  border-radius: 0;
+  padding : 0;
+  min-height: calc(100vh - 200px);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+/* Profile section maximize */
+.profile-section {
+  background: white;
+  border-radius: var(--radius-lg);
+  padding: 0;
   min-height: calc(100vh - 200px);
   display: flex;
   flex-direction: column;
@@ -386,6 +425,9 @@
 
 .visitor-header-section {
   margin-bottom: var(--spacing-2xl);
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Empty states with call to action */
@@ -393,9 +435,14 @@
   background: linear-gradient(135deg, var(--bg-white) 0%, #f8f9fa 100%);
   border: 2px dashed var(--card-border);
   border-radius: var(--radius-xl);
-  padding: var(--spacing-4xl);
+  padding: var(--spacing-4xl) var(--spacing-3xl);
   text-align: center;
   margin: var(--spacing-3xl) 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   position: relative;
   overflow: hidden;
 }
@@ -480,7 +527,7 @@
   color: var(--bulsu-red);
   border: 2px solid var(--bulsu-red);
 }
-
+  
 .visitor-cta-button.secondary:hover {
   background: var(--bulsu-red);
   color: white;
@@ -488,7 +535,6 @@
 
 /* Action buttons */
 .primary-btn {
-  margin-top:20px;
   background: var(--bulsu-red);
   color: white;
   border: none;
@@ -514,18 +560,68 @@
   transform: none;
 }
 
+/* Desktop Optimizations for Large Screens */
+/* Ultra Wide Screens (4K and above) */
+@media (min-width: 2560px) {
+  .visitor-stats {
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-2xl);
+  }
+
+  .visitors-table {
+    padding: calc(var(--spacing-2xl) * 1.5);
+  }
+
+
+}
+
+/* Large Desktop Screens (1440p and up) */
+@media (min-width: 1440px) {
+  .security-sidebar {
+    width: 290px;
+  }
+
+  .security-main {
+    margin-left: 290px;
+  }
+
+  .security-topbar {
+    left: 290px;
+  }
+
+  .visitor-stats {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--spacing-xl);
+  }
+
+  .visitors-table {
+    padding: calc(var(--spacing-2xl) * 1.2);
+  }
+
+  .visitor-header-section > div:first-child {
+    flex-direction: row;
+    gap: var(--spacing-xl);
+    text-align: left;
+    align-items: center;
+    margin-bottom: var(--spacing-xl);
+  }
+
+  .visitor-header-section > div:first-child > div {
+    flex: 1;
+  }
+}
+
+/* Media queries for 1080p and lower */
+@media (min-width: 1366px) and (max-width: 1439px) {
+  .visitor-stats {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
 /* Responsive Design */
-@media (max-width: 1024px) {
+@media (max-width: 1124px) {
   .security-sidebar {
     width: 80px;
-  }
-
-  .security-sidebar span {
-    display: none;
-  }
-
-  .security-sidebar button {
-    justify-content: center;
   }
 
   .security-main {
@@ -534,7 +630,14 @@
 
   .security-topbar {
     left: 80px;
-    right: 0;
+  }
+
+  .security-sidebar span {
+    display: none;
+  }
+
+  .security-sidebar button {
+    justify-content: center;
   }
 }
 
@@ -614,6 +717,11 @@
 @media (max-width: 768px) {
   .visitor-dashboard {
     min-height: calc(100vh - 160px);
+    padding: var(--spacing-lg);
+  }
+
+  .profile-section {
+    padding: var(--spacing-lg);
   }
 
   .visitor-empty-state .empty-icon {

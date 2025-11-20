@@ -145,13 +145,133 @@ const getAdminOverview = async (req, res) => {
     const violationsSnapshot = await db.ref(`violations/${todayKey}`).once('value');
     const violationsToday = violationsSnapshot.exists() ? Object.keys(violationsSnapshot.val()).length : 0;
 
-    const alertsSnapshot = await db.ref('alerts').orderByKey().limitToLast(5).once('value');
+    // Generate alerts from violations - always prefer violations over alerts collection
     let alerts = [];
-    if (alertsSnapshot.exists()) {
-      const alertsData = alertsSnapshot.val();
-      alerts = Object.keys(alertsData)
-        .map((key) => ({ alertId: key, ...alertsData[key] }))
-        .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+
+    // Use the existing violations snapshot for today's violations
+
+    if (violationsSnapshot.exists()) {
+      const violationsData = violationsSnapshot.val();
+      alerts = Object.keys(violationsData)
+        .map((key) => {
+          const violation = { id: key, ...violationsData[key] };
+
+          return {
+            alertId: `violation-${key}`,
+            type: violation.violationType || 'Access Violation',
+            timestamp: violation.timestamp || new Date().toISOString(),
+            gate: violation.gateName || violation.gateId || 'Unknown Gate', // Use gateName from violations
+            campus: violation.campusName || violation.campusId || 'Unknown Campus', // Use campusName from violations
+            violator: violation.studentName || violation.visitorName || 'Unknown Person', // Use names directly from violations
+            severity: violation.violationType === 'unauthorized' ? 'critical' : 'warning',
+            violationType: violation.violationType || 'Unknown',
+            message: `${violation.violationNotes || 'Violation noted: ' + (violation.violationType || 'Unknown violation type')}`
+          };
+        })
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        .slice(0, 10); // Show top 10 violation-based alerts
+    }
+
+    // If no violations, try to get alerts from the alerts collection
+    if (alerts.length === 0) {
+      const alertsSnapshot = await db.ref('alerts').orderByKey().limitToLast(10).once('value');
+      if (alertsSnapshot.exists()) {
+        const alertsData = alertsSnapshot.val();
+
+        // Create lookups for student and campus names
+        const usersSnapshot = await db.ref('users').once('value');
+        const campusesSnapshot = await db.ref('campuses').once('value');
+        const gatesSnapshot = await db.ref('gates').once('value');
+
+        const users = usersSnapshot.exists() ? usersSnapshot.val() : {};
+        const campuses = campusesSnapshot.exists() ? campusesSnapshot.val() : {};
+        const gates = gatesSnapshot.exists() ? gatesSnapshot.val() : {};
+
+        alerts = Object.keys(alertsData)
+          .map((key) => {
+            const alert = { alertId: key, ...alertsData[key] };
+
+            // Look up proper names using the IDs
+            const userData = users[alert.studentId];
+            const gateData = gates[alert.gateId];
+            const campusData = gateData ? campuses[gateData.campusId] : null;
+
+            return {
+              alertId: alert.alertId,
+              type: alert.message?.includes('Violation recorded') ? alert.message.split(':')[0] : 'Security Alert',
+              timestamp: alert.timestamp || new Date().toISOString(),
+              gate: gateData?.name || alert.gateId || 'Unknown Gate',
+              campus: campusData?.name || alert.campusId || 'Unknown Campus',
+              violator: alert.studentName || (userData?.firstName && userData?.lastName ? `${userData.firstName} ${userData.lastName}` : userData?.name || 'Unknown Person'),
+              severity: alert.severity || 'warning',
+              violationType: alert.message?.includes('Violation recorded') ? alert.message.split(':')[1]?.trim() : 'Unknown',
+              message: alert.message || 'System alert detected'
+            };
+          })
+          .sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0))
+          .slice(0, 10); // Limit to 10 most recent
+      }
+    }
+
+    // Add sample alerts if still no alerts (only when no real data exists)
+    if (alerts.length === 0) {
+      alerts = [
+        {
+          alertId: 'sample-1',
+          type: 'Unauthorized Access',
+          timestamp: new Date().toISOString(),
+          gate: 'Main Entrance',
+          campus: 'Main Campus',
+          violator: 'John Doe',
+          severity: 'warning',
+          violationType: 'unauthorized',
+          message: 'Unauthorized access attempt by John Doe at Main Entrance'
+        },
+        {
+          alertId: 'sample-2',
+          type: 'Late Access',
+          timestamp: new Date(Date.now() - 300000).toISOString(), // 5 minutes ago
+          gate: 'Side Gate A',
+          campus: 'Branch Campus',
+          violator: 'Jane Smith',
+          severity: 'warning',
+          violationType: 'late_access',
+          message: 'Late access granted to Jane Smith at Side Gate A'
+        },
+        {
+          alertId: 'sample-3',
+          type: 'Gate Offline',
+          timestamp: new Date(Date.now() - 900000).toISOString(), // 15 minutes ago
+          gate: 'Back Gate',
+          campus: 'Main Campus',
+          violator: 'System',
+          severity: 'critical',
+          violationType: 'system',
+          message: 'Security gate connection lost at Back Gate'
+        }
+      ];
+    }
+
+    // Fetch data for the past 7 days for chart processing
+    const weeklyAccessLogs = {};
+    const weeklyViolations = {};
+
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      const dateKey = formatDateKey(date);
+
+      // Fetch access logs for this date
+      const dateLogsSnapshot = await db.ref(`accessLogs/${dateKey}`).once('value');
+      if (dateLogsSnapshot.exists()) {
+        weeklyAccessLogs[dateKey] = dateLogsSnapshot.val();
+      }
+
+      // Fetch violations for this date
+      const dateViolationsSnapshot = await db.ref(`violations/${dateKey}`).once('value');
+      if (dateViolationsSnapshot.exists()) {
+        weeklyViolations[dateKey] = dateViolationsSnapshot.val();
+      }
     }
 
     res.json({
@@ -168,7 +288,9 @@ const getAdminOverview = async (req, res) => {
           violationsToday
         },
         alerts,
-        accessLogs
+        accessLogs,
+        weeklyAccessLogs,
+        weeklyViolations
       }
     });
   } catch (error) {
@@ -487,6 +609,47 @@ const getGatesByCampus = async (req, res) => {
   }
 };
 
+const toggleGateStatus = async (req, res) => {
+  try {
+    const { gateId } = req.params;
+
+    // Get current gate status
+    const gateSnapshot = await db.ref(`gates/${gateId}`).once('value');
+    if (!gateSnapshot.exists()) {
+      return res.status(404).json({
+        success: false,
+        message: 'Gate not found'
+      });
+    }
+
+    const gateData = gateSnapshot.val();
+    const newStatus = gateData.status === 'active' ? 'inactive' : 'active';
+
+    // Update gate status
+    await db.ref(`gates/${gateId}`).update({
+      status: newStatus,
+      updatedAt: new Date().toISOString(),
+      updatedBy: req.user?.userId || 'system'
+    });
+
+    res.json({
+      success: true,
+      message: `Gate ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`,
+      gate: {
+        gateId,
+        status: newStatus,
+        name: gateData.name
+      }
+    });
+  } catch (error) {
+    console.error('Toggle gate status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error while toggling gate status'
+    });
+  }
+};
+
 const formatDateKey = (date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -506,5 +669,6 @@ module.exports = {
   deleteGate,
   getGatesByCampus,
   getCampusScopedLogs,
-  getCampusScopedViolations
+  getCampusScopedViolations,
+  toggleGateStatus
 };

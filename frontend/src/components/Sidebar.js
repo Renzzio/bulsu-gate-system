@@ -1,6 +1,7 @@
 // frontend/src/components/Sidebar.js
 import React from 'react';
 import './Sidebar.css';
+import bulsuLogo from '../bulsuLogo.png';
 
 function Sidebar({ activeSection, onSelectSection, onLogout, user }) {
   const menuItems = [
@@ -19,8 +20,8 @@ function Sidebar({ activeSection, onSelectSection, onLogout, user }) {
   return (
     <div className="sidebar">
       <div className="sidebar-header">
-        <div className="sidebar-logo">🎓</div>
-        <h2>BulSU Gate</h2>
+        <img src={bulsuLogo} alt="BulSU Logo" className="sidebar-logo" />
+        <h2>BulSU Gate Restriction System</h2>
       </div>
 
       <nav className="sidebar-nav">

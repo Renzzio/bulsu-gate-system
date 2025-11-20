@@ -1,5 +1,5 @@
 // frontend/src/components/UserManagement.js
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import * as authService from '../services/authService';
 import gateService from '../services/gateService';
 import { QRCodeCanvas } from 'qrcode.react';
@@ -26,6 +26,9 @@ function UserManagement({ role = 'admin' }) {
   const [showQR, setShowQR] = useState(null);
   const [campuses, setCampuses] = useState([]);
   const [gates, setGates] = useState([]);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Department options for faculty and students
   const departmentOptions = [
@@ -153,7 +156,6 @@ function UserManagement({ role = 'admin' }) {
       staff: ['department', 'position', 'qualifications', ...commonFields],
       student: ['studentId', 'yearLevel', 'program', 'section', 'studentDepartment', ...commonFields],
       guard: [...commonFields],
-      vip: ['remarks', ...commonFields],
       admin: ['remarks', ...commonFields]
     };
 
@@ -192,15 +194,14 @@ function UserManagement({ role = 'admin' }) {
 
         const response = await authService.createUser(userData);
 
-        setSuccess(`User created! UserID: ${response.user.userID} | Username: ${response.user.username} | Password: ${response.user.password}`);
-        setShowCredentials(response.user);
+        setShowCreateModal(true);
+        setShowForm(false);
         setFormData({
           firstName: '',
           lastName: '',
           email: '',
           role: 'student'
         });
-        setShowForm(false);
 
         // Refresh users list
         if (selectedRole) {
@@ -232,7 +233,8 @@ function UserManagement({ role = 'admin' }) {
       delete mappedData.facultyDepartment;
 
       await authService.updateUser(userId, mappedData);
-      setSuccess('User updated successfully');
+      setShowUpdateModal(true);
+      setShowForm(false);
       setEditingUser(null);
 
       if (selectedRole) {
@@ -247,17 +249,17 @@ function UserManagement({ role = 'admin' }) {
     }
   };
 
-  const handleDeactivateUser = async (userId) => {
-    if (!window.confirm('Are you sure you want to deactivate this user?')) {
+  const handleDeleteUser = async (userId) => {
+    if (!window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
       return;
     }
 
     try {
       setError('');
       setLoading(true);
-      await authService.deactivateUser(userId);
-      setSuccess('User deactivated successfully');
-      
+      await authService.deleteUser(userId);
+      setShowDeleteModal(true);
+
       if (selectedRole) {
         fetchUsersByRole(selectedRole);
       } else {
@@ -348,8 +350,7 @@ function UserManagement({ role = 'admin' }) {
       admin: '#ff6b6b',
       faculty: '#4ecdc4',
       staff: '#45b7d1',
-      guard: '#f7b731',
-      vip: '#5f27cd'
+      guard: '#f7b731'
     };
     return colors[role] || '#95a5a6';
   };
@@ -382,239 +383,368 @@ function UserManagement({ role = 'admin' }) {
 
   return (
     <div className="user-management">
-      <div className="um-header">
-        <h2><Users size={20} /> User Management System</h2>
-        <p>Manage all users in the system - Create, Edit, Deactivate, and Delete</p>
-      </div>
+
+      {/* Update Success Modal */}
+      {showUpdateModal && (
+        <div className="modal-overlay" onClick={() => setShowUpdateModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <div className="modal-header">
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', color: '#ffffffff', marginBottom: '-5px' }}>
+              </h3>
+            </div>
+
+            <div style={{ padding: '24px' }}>
+              <div style={{
+                backgroundColor: '#e8f5e8',
+                border: '2px solid #27ae60',
+                borderRadius: '12px',
+                padding: '24px',
+                marginBottom: '20px',
+                display: 'inline-block'
+              }}>
+                <Check size={48} color="#27ae60" />
+              </div>
+
+              <p style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: 'var(--text-dark)',
+                marginBottom: '8px'
+              }}>
+                User updated successfully!
+              </p>
+
+              <p style={{
+                fontSize: '14px',
+                color: 'var(--text-muted)',
+                marginBottom: '24px'
+              }}>
+                The user information has been updated in the system.
+              </p>
+
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowUpdateModal(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 auto' }}
+              >
+                <Check size={16} />
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Success Modal */}
+      {showCreateModal && (
+        <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <div className="modal-header">
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', color: '#ffffffff', marginBottom: '-5px' }}>
+              </h3>
+            </div>
+
+            <div style={{ padding: '24px' }}>
+              <div style={{
+                backgroundColor: '#e8f5e8',
+                border: '2px solid #27ae60',
+                borderRadius: '12px',
+                padding: '24px',
+                marginBottom: '20px',
+                display: 'inline-block'
+              }}>
+                <UserPlus size={48} color="#27ae60" />
+              </div>
+
+              <p style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: 'var(--text-dark)',
+                marginBottom: '8px'
+              }}>
+                User created successfully!
+              </p>
+
+              <p style={{
+                fontSize: '14px',
+                color: 'var(--text-muted)',
+                marginBottom: '24px'
+              }}>
+                The new user has been added to the system.
+              </p>
+
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowCreateModal(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 auto' }}
+              >
+                <Check size={16} />
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Success Modal */}
+      {showDeleteModal && (
+        <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+          <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <div className="modal-header">
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center', color: '#ffffffff', marginBottom: '-5px' }}>
+              </h3>
+            </div>
+
+            <div style={{ padding: '24px' }}>
+              <div style={{
+                backgroundColor: '#ffeaea',
+                border: '2px solid #e74c3c',
+                borderRadius: '12px',
+                padding: '24px',
+                marginBottom: '20px',
+                display: 'inline-block'
+              }}>
+                <Trash2 size={48} color="#e74c3c" />
+              </div>
+
+              <p style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: 'var(--text-dark)',
+                marginBottom: '8px'
+              }}>
+                User deleted successfully!
+              </p>
+
+              <p style={{
+                fontSize: '14px',
+                color: 'var(--text-muted)',
+                marginBottom: '24px'
+              }}>
+                The user account has been permanently removed from the system.
+              </p>
+
+              <button
+                className="btn btn-primary"
+                onClick={() => setShowDeleteModal(false)}
+                style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '0 auto' }}
+              >
+                <Check size={16} />
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* User Information Display Modal */}
       {showCredentials && (
         <div className="modal-overlay" onClick={() => setShowCredentials(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-              <User size={28} color="var(--bulsu-red)" />
-              <h3 style={{ margin: 0, fontSize: '24px', fontWeight: '600', color: 'var(--text-dark)' }}>User Information</h3>
+          <div className="modal-content modal-form" onClick={e => e.stopPropagation()} style={{ maxHeight: '90vh', overflow: 'hidden' }}>
+            <div className="modal-header">
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Eye size={16} />
+                View User Details
+              </h3>
+              <button className="modal-close-btn" onClick={() => setShowCredentials(null)}>✕</button>
             </div>
-            <p className="credential-info">
-              Complete user information and details.
-            </p>
-            <div className="credentials-box">
-              {/* Personal Information Section */}
-              <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                  <User size={18} color="var(--bulsu-red)" />
-                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: 'var(--text-dark)', letterSpacing: '0.3px' }}>Personal Information</h4>
+
+            <div style={{ padding: '20px', overflowY: 'auto', maxHeight: 'calc(90vh - 80px)' }}>
+              {/* Personal Information */}
+              <div className="form-section-title"><User size={16} /> Personal Information</div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>First Name</label>
+                  <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                    {showCredentials.firstName}
+                  </div>
                 </div>
-                <div className="credential-item">
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                    <User size={14} color="var(--text-muted)" />
-                    First Name
-                  </label>
-                  <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>{showCredentials.firstName}</div>
+                <div className="form-group">
+                  <label>Last Name</label>
+                  <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                    {showCredentials.lastName}
+                  </div>
                 </div>
-                <div className="credential-item">
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                    <User size={14} color="var(--text-muted)" />
-                    Last Name
-                  </label>
-                  <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>{showCredentials.lastName}</div>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Email</label>
+                  <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333', wordBreak: 'break-all' }}>
+                    {showCredentials.email}
+                  </div>
                 </div>
-                <div className="credential-item">
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                    <Mail size={14} color="var(--text-muted)" />
-                    Email
-                  </label>
-                  <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>{showCredentials.email}</div>
+                <div className="form-group">
+                  <label>Username</label>
+                  <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                    {showCredentials.username}
+                  </div>
                 </div>
+              </div>
+              <div className="form-row">
                 {showCredentials.phoneNumber && (
-                  <div className="credential-item">
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                      <Phone size={14} color="var(--text-muted)" />
-                      Phone Number
-                    </label>
-                    <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>{showCredentials.phoneNumber}</div>
+                  <div className="form-group">
+                    <label>Phone Number</label>
+                    <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                      {showCredentials.phoneNumber}
+                    </div>
                   </div>
                 )}
                 {showCredentials.address && (
-                  <div className="credential-item">
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                      <MapPin size={14} color="var(--text-muted)" />
-                      Address
-                    </label>
-                    <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>{showCredentials.address}</div>
+                  <div className="form-group">
+                    <label>Address</label>
+                    <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                      {showCredentials.address}
+                    </div>
                   </div>
                 )}
               </div>
 
-              {/* Role & Status Section */}
-              <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                  <Briefcase size={18} color="var(--bulsu-red)" />
-                  <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: 'var(--text-dark)', letterSpacing: '0.3px' }}>Role & Status</h4>
-                </div>
-                <div className="credential-item">
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                    <Briefcase size={14} color="var(--text-muted)" />
-                    Role
-                  </label>
-                  <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>{showCredentials.role.toUpperCase()}</div>
-                </div>
-                {showCredentials.status && (
-                  <div className="credential-item">
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                      <ChevronDown size={14} color="var(--text-muted)" />
-                      Status
-                    </label>
-                    <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>{showCredentials.status}</div>
+              {/* Role & Status */}
+              <div className="form-section-title"><Briefcase size={16} /> Role & Status</div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Role</label>
+                  <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                    {showCredentials.role.toUpperCase()}
                   </div>
-                )}
+                </div>
+                <div className="form-group">
+                  <label>Status</label>
+                  <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                    {showCredentials.status ? showCredentials.status : 'N/A'}
+                  </div>
+                </div>
+              </div>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Campus</label>
+                  <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                    {showCredentials.campusId ? (campuses.find(campus => campus.campusId === showCredentials.campusId)?.name || showCredentials.campusId) : 'N/A'}
+                  </div>
+                </div>
+                <div className="form-group">
+                  {/* Placeholder for spacing */}
+                </div>
               </div>
 
               {/* Role-Specific Information */}
               {showCredentials.role === 'student' && (
-                <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                    <BookOpen size={18} color="var(--bulsu-red)" />
-                    <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: 'var(--text-dark)', letterSpacing: '0.3px' }}>Student Information</h4>
+                <>
+                  <div className="form-section-title"><GraduationCap size={16} /> Student Information</div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Student ID</label>
+                      <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                        {showCredentials.studentId || 'N/A'}
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>Year Level</label>
+                      <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                        {showCredentials.yearLevel || 'N/A'}
+                      </div>
+                    </div>
                   </div>
-                  {showCredentials.studentId && (
-                    <div className="credential-item">
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                        <FileText size={14} color="var(--text-muted)" />
-                        Student ID
-                      </label>
-                      <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>{showCredentials.studentId}</div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Program</label>
+                      <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                        {showCredentials.program || 'N/A'}
+                      </div>
                     </div>
-                  )}
-                  {showCredentials.yearLevel && (
-                    <div className="credential-item">
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                        <Award size={14} color="var(--text-muted)" />
-                        Year Level
-                      </label>
-                      <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>{showCredentials.yearLevel}</div>
+                    <div className="form-group">
+                      <label>Section</label>
+                      <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                        {showCredentials.section || 'N/A'}
+                      </div>
                     </div>
-                  )}
-                  {showCredentials.program && (
-                    <div className="credential-item">
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                        <BookOpen size={14} color="var(--text-muted)" />
-                        Program
-                      </label>
-                      <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>{showCredentials.program}</div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Department</label>
+                      <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                        {showCredentials.studentDepartment || 'N/A'}
+                      </div>
                     </div>
-                  )}
-                  {showCredentials.section && (
-                    <div className="credential-item">
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                        <FileText size={14} color="var(--text-muted)" />
-                        Section
-                      </label>
-                      <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>{showCredentials.section}</div>
+                    <div className="form-group">
+                      {/* Placeholder for spacing */}
                     </div>
-                  )}
-                  {showCredentials.studentDepartment && (
-                    <div className="credential-item">
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                        <BookOpen size={14} color="var(--text-muted)" />
-                        Department
-                      </label>
-                      <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>{showCredentials.studentDepartment}</div>
-                    </div>
-                  )}
-                </div>
+                  </div>
+                </>
               )}
 
-              {showCredentials.role === 'faculty' && (
-                <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                    <Briefcase size={18} color="var(--bulsu-red)" />
-                    <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: 'var(--text-dark)', letterSpacing: '0.3px' }}>Faculty Information</h4>
+              {(showCredentials.role === 'faculty' || showCredentials.role === 'staff') && (
+                <>
+                  <div className="form-section-title"><Briefcase size={16} /> Faculty Information</div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Department</label>
+                      <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                        {showCredentials.department || 'N/A'}
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>Position</label>
+                      <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                        {showCredentials.position || 'N/A'}
+                      </div>
+                    </div>
                   </div>
-                  {showCredentials.department && (
-                    <div className="credential-item">
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                        <Briefcase size={14} color="var(--text-muted)" />
-                        Department
-                      </label>
-                      <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>{showCredentials.department}</div>
-                    </div>
-                  )}
-                  {showCredentials.position && (
-                    <div className="credential-item">
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                        <Award size={14} color="var(--text-muted)" />
-                        Position
-                      </label>
-                      <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>{showCredentials.position}</div>
-                    </div>
-                  )}
                   {showCredentials.subjects && (
-                    <div className="credential-item">
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                        <BookOpen size={14} color="var(--text-muted)" />
-                        Subjects Handled
-                      </label>
-                      <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>{showCredentials.subjects}</div>
-                    </div>
-                  )}
-                  {showCredentials.qualifications && (
-                    <div className="credential-item">
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                        <Award size={14} color="var(--text-muted)" />
-                        Qualifications
-                      </label>
-                      <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>{showCredentials.qualifications}</div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {showCredentials.role === 'guard' && (
-                <div style={{ marginBottom: '20px', paddingBottom: '20px', borderBottom: '1px solid rgba(0,0,0,0.1)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                    <Shield size={18} color="var(--bulsu-red)" />
-                    <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: 'var(--text-dark)', letterSpacing: '0.3px' }}>Security Personnel</h4>
-                  </div>
-                  <div className="credential-item">
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                      <Shield size={14} color="var(--text-muted)" />
-                      Role Type
-                    </label>
-                    <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>Campus Security Guard</div>
-                  </div>
-                  {showCredentials.campusId && (
-                    <div className="credential-item">
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                        <MapPin size={14} color="var(--text-muted)" />
-                        Campus Assignment
-                      </label>
-                      <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>
-                        {campuses.find(campus => campus.campusId === showCredentials.campusId)?.name || showCredentials.campusId}
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label>Subjects Handled</label>
+                        <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                          {showCredentials.subjects}
+                        </div>
+                      </div>
+                      <div className="form-group">
+                        <label>Qualifications</label>
+                        <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                          {showCredentials.qualifications || 'N/A'}
+                        </div>
                       </div>
                     </div>
                   )}
-                </div>
+                </>
               )}
 
-              {/* Additional Information */}
-              {showCredentials.remarks && (
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                    <FileText size={18} color="var(--bulsu-red)" />
-                    <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: 'var(--text-dark)', letterSpacing: '0.3px' }}>Remarks</h4>
+              {showCredentials.role === 'guard' && (
+                <>
+                  <div className="form-section-title"><Shield size={16} /> Security Personnel</div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Role Type</label>
+                      <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                        Campus Security Guard
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      {/* Placeholder for spacing */}
+                    </div>
                   </div>
-                  <div className="credential-item">
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif" }}>
-                      <FileText size={14} color="var(--text-muted)" />
-                      Notes
-                    </label>
-                    <div className="credential-value" style={{ fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif", fontSize: '14px' }}>{showCredentials.remarks}</div>
-                  </div>
-                </div>
+                </>
               )}
+
+              {/* Remarks */}
+              {showCredentials.remarks && (
+                <>
+                  <div className="form-section-title"><FileText size={16} /> Additional Information</div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Remarks/Notes</label>
+                      <div style={{ padding: '12px', background: '#f8f9fa', borderRadius: '6px', border: '1px solid #e0e0e0', color: '#333' }}>
+                        {showCredentials.remarks}
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <div className="form-actions">
+                
+              </div>
             </div>
-            <button className="btn-close" onClick={() => setShowCredentials(null)}>Close</button>
           </div>
         </div>
       )}
@@ -623,44 +753,82 @@ function UserManagement({ role = 'admin' }) {
       {showQR && (
         <div className="modal-overlay" onClick={() => setShowQR(null)}>
           <div className="modal-content" onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-              <QrCode size={28} color="var(--bulsu-red)" />
-              <h3 style={{ margin: 0, fontSize: '24px', fontWeight: '600', color: 'var(--text-dark)' }}>QR Code</h3>
+            <div className="modal-header">
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <QrCode size={20} />
+                QR Code Generator
+              </h3>
+              <button className="modal-close-btn" onClick={() => setShowQR(null)}>✕</button>
             </div>
-            <p className="credential-info">
-              QR code containing the user's unique ID.
-            </p>
-            <div style={{ textAlign: 'center', padding: '20px' }}>
-              <QRCodeCanvas
-                value={showQR.userId}
-                size={256}
-                level="H"
-                includeMargin={true}
-                style={{ marginBottom: '20px' }}
-              />
-              <div style={{ marginBottom: '16px', fontFamily: 'monospace', fontSize: '14px', color: 'var(--text-muted)' }}>
-                User ID: {showQR.userId}
+
+            <div style={{ padding: '24px', textAlign: 'center' }}>
+              <p style={{ marginBottom: '24px', color: 'var(--text-muted)', fontSize: '14px' }}>
+                QR code containing the user's unique ID for gate access.
+              </p>
+
+              <div style={{
+                backgroundColor: '#f8f9fa',
+                borderRadius: '12px',
+                padding: '24px',
+                marginBottom: '20px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '2px solid #e0e0e0'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '16px'
+                }}>
+                  <QRCodeCanvas
+                    value={showQR.userId}
+                    size={256}
+                    level="H"
+                    includeMargin={true}
+                  />
+
+
+                </div>
               </div>
-              <div style={{ marginBottom: '16px' }}>
-                <strong>{showQR.firstName} {showQR.lastName}</strong>
+
+              <div style={{ marginBottom: '24px' }}>
+                <div style={{ fontFamily: 'monospace', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '8px' }}>
+                  User ID: <strong>{showQR.userId}</strong>
+                </div>
+                <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--text-dark)' }}>
+                  {showQR.firstName} {showQR.lastName}
+                </div>
+                <div style={{ fontSize: '14px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  {showQR.role.toUpperCase()} • {showQR.campusId ? 'Campus Assigned' : 'No Campus Assigned'}
+                </div>
               </div>
-              <button
-                className="btn btn-primary"
-                onClick={() => {
-                  const canvas = document.querySelector('canvas');
-                  if (canvas) {
-                    const link = document.createElement('a');
-                    link.download = `qr-${showQR.userId}.png`;
-                    link.href = canvas.toDataURL();
-                    link.click();
-                  }
-                }}
-                style={{ marginRight: '10px' }}
-              >
-                Download QR Code
-              </button>
+
+              <div className="form-actions" style={{ justifyContent: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    // Use timeout to ensure QR code is rendered
+                    setTimeout(() => {
+                      const canvas = document.querySelector('canvas');
+                      if (canvas) {
+                        const link = document.createElement('a');
+                        link.download = `qr-${showQR.userId}.png`;
+                        link.href = canvas.toDataURL('image/png');
+                        link.click();
+                      }
+                    }, 100);
+                  }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <QrCode size={16} />
+                  Save QR Code
+                </button>
+
+         
+              </div>
             </div>
-            <button className="btn-close" onClick={() => setShowQR(null)}>Close</button>
           </div>
         </div>
       )}
@@ -705,7 +873,6 @@ function UserManagement({ role = 'admin' }) {
             <option value="admin">Admins</option>
             <option value="faculty">Faculty/Staff</option>
             <option value="guard">Guards</option>
-            <option value="vip">VIP</option>
           </select>
         </div>
 
@@ -752,7 +919,6 @@ function UserManagement({ role = 'admin' }) {
 
             {/* Alert Messages inside modal */}
             {error && <div className="alert alert-error">{error}</div>}
-            {success && <div className="alert alert-success">{success}</div>}
 
             <form onSubmit={handleCreateUser}>
               <div className="form-row">
@@ -799,11 +965,11 @@ function UserManagement({ role = 'admin' }) {
                     value={formData.role}
                     onChange={handleInputChange}
                     required
+                    disabled={!!editingUser}
                   >
                     <option value="student">Student</option>
                     <option value="faculty">Faculty/Staff</option>
                     <option value="guard">Guard</option>
-                    <option value="vip">VIP</option>
                     <option value="admin">Admin</option>
                   </select>
                 </div>
@@ -836,7 +1002,7 @@ function UserManagement({ role = 'admin' }) {
                 <div className="form-group">
                   <label>Phone Number</label>
                   <input
-                    type="tel"
+                    type="number"
                     name="phoneNumber"
                     value={formData.phoneNumber}
                     onChange={handleInputChange}
@@ -1009,31 +1175,9 @@ function UserManagement({ role = 'admin' }) {
                 />
               </div>
 
-              <p className="form-note" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                {editingUser ? (
-                  <>
-                    <FileText size={16} /> Update user information
-                  </>
-                ) : (
-                  <>
-                    <Info size={16} /> Login credentials will be auto-generated and displayed after creation.
-                  </>
-                )}
-              </p>
-
               <div className="form-actions">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingUser(null);
-                    resetFormData();
-                  }}
-                >
-                  <X size={16} /> Cancel
-                </button>
-                <button type="submit" className="btn btn-success" disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+
+                <button type="submit" className="btn btn-success" disabled={loading} style={{ display: 'flex', alignItems: 'center', gap: '8px', justifyContent: 'center' }}>
                   {loading ? (
                     editingUser ? 'Updating...' : 'Creating...'
                   ) : (
@@ -1068,6 +1212,7 @@ function UserManagement({ role = 'admin' }) {
                 <th>Username</th>
                 <th>Email</th>
                 <th>Department</th>
+                <th>Campus</th>
                 <th>Role</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -1088,6 +1233,9 @@ function UserManagement({ role = 'admin' }) {
                       (user.studentDepartment || 'N/A') :
                       '-'
                     }
+                  </td>
+                  <td>
+                    {user.campusId ? (campuses.find(campus => campus.campusId === user.campusId)?.name || user.campusId) : 'N/A'}
                   </td>
                   <td>
                     <span
@@ -1133,25 +1281,15 @@ function UserManagement({ role = 'admin' }) {
                       >
                         <QrCode size={14} />
                       </button>
-                      {user.status === 'active' ? (
-                        <button
-                          className="btn-action btn-deactivate"
-                          onClick={() => handleDeactivateUser(user.userId)}
-                          title="Deactivate user"
-                          style={{ padding: '6px 8px', fontSize: '12px' }}
-                        >
-                          <Lock size={14} />
-                        </button>
-                      ) : (
-                        <button
-                          className="btn-action btn-activate"
-                          onClick={() => handleActivateUser(user.userId)}
-                          title="Activate user"
-                          style={{ padding: '6px 8px', fontSize: '12px' }}
-                        >
-                          <Unlock size={14} />
-                        </button>
-                      )}
+                      <button
+                        className="btn-action btn-delete"
+                        title="Delete User"
+                        onClick={() => handleDeleteUser(user.userId)}
+                        style={{ padding: '6px 8px', fontSize: '12px' }}
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                      
                     </div>
                   </td>
                 </tr>

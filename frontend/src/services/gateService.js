@@ -155,6 +155,15 @@ const getGatesByCampus = async (campusId) => {
   }
 };
 
+const toggleGateStatus = async (gateId) => {
+  try {
+    const response = await gateAPI.put(`/gates/${gateId}/toggle-status`);
+    return response.data;
+  } catch (error) {
+    throw error.response?.data || { success: false, message: error.message };
+  }
+};
+
 export default {
   scanStudent,
   getAccessLogs,
@@ -170,5 +179,6 @@ export default {
   getGates,
   updateGate,
   deleteGate,
-  getGatesByCampus
+  getGatesByCampus,
+  toggleGateStatus
 };

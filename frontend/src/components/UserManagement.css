@@ -16,6 +16,7 @@
 }
 
 .um-header {
+  margin-top: 30px;
   margin-bottom: var(--spacing-3xl);
 }
 
@@ -87,6 +88,20 @@
   box-shadow: var(--shadow-md);
 }
 
+#reset-student-filters {
+  background: darkgray;
+  color: white;
+  border: 1px solid var(--card-border);
+  height: 42px;
+  align-self: bottom;
+
+}
+
+#reset-student-filters:hover {
+  background: var(--bg-light);
+  border-color: var(--text-muted);
+  color: black;
+}
 .btn-primary:hover {
   background: var(--bulsu-dark-red);
   transform: translateY(-2px);
@@ -98,12 +113,13 @@
 }
 
 .btn-secondary {
-  background: var(--text-muted);
+  background: var(--bulsu-red);
   color: white;
 }
 
 .btn-secondary:hover {
-  background: #555;
+  border: 1px solid var(--bulsu-red);
+  color: black;
 }
 
 .btn-success {
@@ -405,7 +421,6 @@
 
 .modal-content {
   background: var(--bg-white);
-  padding: var(--spacing-3xl);
   border-radius: var(--radius-lg);
   max-width: 600px;
   width: 90%;
@@ -530,6 +545,22 @@
   background: var(--bulsu-dark-red);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
+}
+
+.btn-delete {
+  background: rgba(255, 82, 82, 0.1);
+  color: var(--accent-red);
+  border: none;
+  font-size: var(--font-size-lg);
+  cursor: pointer;
+  padding: var(--spacing-sm);
+  border-radius: var(--radius-sm);
+  transition: all 0.2s ease;
+}
+
+.btn-delete:hover {
+  background: rgba(255, 82, 82, 0.2);
+  color: var(--accent-red);
 }
 
 /* Responsive */

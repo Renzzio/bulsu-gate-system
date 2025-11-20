@@ -447,11 +447,13 @@ const formatDateKey = (date) => {
   return `${year}-${month}-${day}`;
 };
 
-// Get all visitors (for admin - with campus filtering)
+// Get all visitors (for admin/guards - with campus filtering)
 const getAllVisitors = async (req, res) => {
   try {
     const visitorsRef = db.ref('visitors');
-    const campusId = req.query.campusId; // Optional filter
+    const { campusId } = req.query; // Optional filter
+    const userRole = req.user?.role;
+    const userCampusId = req.user?.campusId;
 
     const snapshot = await visitorsRef.once('value');
 
@@ -460,12 +462,18 @@ const getAllVisitors = async (req, res) => {
       snapshot.forEach((childSnapshot) => {
         const visitor = childSnapshot.val();
 
-        // Filter by campus if specified
-        if (!campusId || visitor.campusId === campusId) {
-          visitors.push({
-            id: childSnapshot.key,
-            ...visitor
-          });
+        // For guards/security personnel, only show visitors from their own campus
+        if (!req.user ||
+            ['admin'].includes(userRole) ||
+            (['guard', 'security', 'security_guard', 'security_officer'].includes(userRole) && visitor.campusId === userCampusId)) {
+
+          // Additional filtering if campusId is specified (for admin use)
+          if (!campusId || visitor.campusId === campusId) {
+            visitors.push({
+              id: childSnapshot.key,
+              ...visitor
+            });
+          }
         }
       });
     }

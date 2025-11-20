@@ -67,6 +67,18 @@ class VisitorService {
     }
   }
 
+  // Get all visitors for guards (with optional campus filtering)
+  async getAllVisitorsForGuards(campusId = null) {
+    try {
+      const params = campusId ? { campusId } : {};
+      const response = await this.api.get('/api/visitors/all', { params });
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching all visitors for guards:', error);
+      throw error.response?.data || error.message;
+    }
+  }
+
   // Get all visitors (admin only - with optional campus filtering)
   async getAllVisitors(campusId = null) {
     try {

@@ -5,7 +5,7 @@ const admin = require('firebase-admin');
 const serviceAccount = require('./serviceAccountKey.json'); // Make sure path is correct
 
 // Your database URL from the Firebase console
-const DATABASE_URL = "https://webappprojectfirebase-default-rtdb.firebaseio.com/"; // !!! REPLACE THIS with your database URL
+const DATABASE_URL = "https://bulsugatesystem-default-rtdb.firebaseio.com/"; // !!! REPLACE THIS with your database URL
 
 if (!admin.apps.length) {
   admin.initializeApp({

@@ -16,7 +16,7 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: 'https://bulsu-gate-system.onrender.com',
   credentials: true
 }));
 app.use(bodyParser.json());

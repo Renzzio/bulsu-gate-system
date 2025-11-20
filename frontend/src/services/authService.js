@@ -6,7 +6,7 @@ const USERS_API_URL = 'http://localhost:5000/api/users';
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
-  baseURL: API_URL,
+  baseURL: process.env.REACT_APP_API_URL,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -14,7 +14,7 @@ const axiosInstance = axios.create({
 
 // Create users axios instance
 const usersAxiosInstance = axios.create({
-  baseURL: USERS_API_URL,
+  baseURL: process.env.REACT_APP_API_URL,
   headers: {
     'Content-Type': 'application/json'
   }

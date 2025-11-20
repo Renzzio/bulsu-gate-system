@@ -1,6 +1,6 @@
 // frontend/src/firebase.js
 import { initializeApp } from 'firebase/app';
-import { getDatabase } from 'firebase/database';
+import { getDatabase, ref, onValue, push, set, update, remove } from 'firebase/database';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -19,4 +19,4 @@ const app = initializeApp(firebaseConfig);
 // Get database reference
 const db = getDatabase(app);
 
-export { db };
+export { db, ref, onValue, push, set, update, remove };

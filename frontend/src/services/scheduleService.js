@@ -1,7 +1,7 @@
 // frontend/src/services/scheduleService.js
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000/api/schedules';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL ? `${process.env.REACT_APP_API_BASE_URL}/api/schedules` : 'http://localhost:5000/api/schedules';
 
 // Create axios instance with default headers
 const scheduleAPI = axios.create({

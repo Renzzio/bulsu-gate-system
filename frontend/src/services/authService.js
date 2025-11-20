@@ -1,12 +1,12 @@
 // frontend/src/services/authService.js
 import axios from 'axios';
 
-const API_URL = 'http://localhost:5000/api/auth';
-const USERS_API_URL = 'http://localhost:5000/api/users';
+const API_URL = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}/api/auth`;
+const USERS_API_URL = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000'}/api/users`;
 
 // Create axios instance with default config
 const axiosInstance = axios.create({
-  baseURL: process.env.REACT_APP_API_URL,
+  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -14,7 +14,7 @@ const axiosInstance = axios.create({
 
 // Create users axios instance
 const usersAxiosInstance = axios.create({
-  baseURL: process.env.REACT_APP_API_URL,
+  baseURL: USERS_API_URL,
   headers: {
     'Content-Type': 'application/json'
   }

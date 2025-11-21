@@ -39,21 +39,62 @@ const scanStudent = async (req, res) => {
       });
     }
 
-    // Fetch student profile information
-    const studentProfile = await findStudentProfile(studentId);
-    if (!studentProfile) {
-      return res.status(404).json({
-        success: false,
-        message: `Student ${studentId} not found`
-      });
-    }
+    // Fetch student profile information
+    const studentProfile = await findStudentProfile(studentId);
+    if (!studentProfile) {
+      return res.status(404).json({
+        success: false,
+        message: `Student ${studentId} not found`
+      });
+    }
 
-    const now = new Date();
-    const currentDay = getDayName(now);
+    const now = new Date();
+    const currentDay = getDayName(now);
 
-    const schedulesToday = await getSchedulesByDay(studentId, currentDay);
-    const hasScheduleToday = schedulesToday.length > 0;
-    const activeSchedule = await getActiveScheduleNow(studentId);
+    // DEBUG LOGGING: Log schedule detection details
+    console.log('=== SCHEDULE DETECTION DEBUG ===');
+    console.log('Student profile found:', !!studentProfile);
+    console.log('Student ID used for schedule lookup:', studentId);
+    console.log('Current day of week:', currentDay);
+    console.log('Current time:', now.toLocaleTimeString());
+
+    const schedulesToday = await getSchedulesByDay(studentId, currentDay);
+    console.log('Schedules found for today:', schedulesToday.length);
+
+    if (schedulesToday.length > 0) {
+      console.log('Schedule details:', schedulesToday.map(s => ({
+        subjectCode: s.subjectCode,
+        dayOfWeek: s.dayOfWeek,
+        startTime: s.startTime,
+        endTime: s.endTime,
+        room: s.room
+      })));
+    } else {
+      console.log('NO schedules found - checking Firebase path: schedules/' + studentId);
+      // Let's check if the schedule lookup path exists at all
+      try {
+        const scheduleCheck = await db.ref(`schedules/${studentId}`).once('value');
+        console.log('Firebase path schedules/' + studentId + ' exists:', scheduleCheck.exists());
+        if (scheduleCheck.exists()) {
+          const allSchedules = scheduleCheck.val();
+          console.log('All schedules in Firebase:', Object.keys(allSchedules));
+          // Check day matching
+          for (const schedule of Object.values(allSchedules)) {
+            console.log('Schedule day:', schedule.dayOfWeek, 'vs current day:', currentDay, 'match:', schedule.dayOfWeek === currentDay);
+          }
+        }
+      } catch (error) {
+        console.log('Error checking Firebase path:', error.message);
+      }
+    }
+
+    const hasScheduleToday = schedulesToday.length > 0;
+    const activeSchedule = await getActiveScheduleNow(studentId);
+
+    console.log('Final result: hasScheduleToday =', hasScheduleToday);
+    console.log('=== END DEBUG ===');
+
+
 
     // Get gate and campus information early
     const gateInfo = await findGateInfo(gateId || studentProfile.assignedGate || 'Main Gate');
